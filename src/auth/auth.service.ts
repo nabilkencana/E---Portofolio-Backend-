@@ -83,7 +83,6 @@ export class AuthService {
             userId: newUser.id,
           },
         });
-
         return newUser;
       });
 
@@ -98,7 +97,7 @@ export class AuthService {
       this.logger.log(`User registered: ${user.email}`);
 
       return {
-        user: new UserEntity(user),
+        user: new UserEntity({ ...user, name: user.name ?? undefined }),
         ...tokens,
       };
     } catch (error) {
@@ -139,6 +138,15 @@ export class AuthService {
         throw new UnauthorizedException('Email atau password salah');
       }
 
+      // TEMPORARY: Auto verify email for development
+      // Remove this in production
+      if (!user.emailVerified) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true },
+        });
+      }
+
       // Generate tokens
       const tokens = await this.generateTokens(user.id, user.email, user.role);
 
@@ -150,7 +158,7 @@ export class AuthService {
       this.logger.log(`User logged in: ${user.email}`);
 
       return {
-        user: new UserEntity(user),
+        user: new UserEntity({ ...user, name: user.name ?? undefined }),
         ...tokens,
       };
     } catch (error) {
@@ -319,7 +327,11 @@ export class AuthService {
         throw new UnauthorizedException('Pengguna tidak ditemukan');
       }
 
-      return new UserEntity(user);
+      return new UserEntity({ 
+        ...user, 
+        name: user.name ?? undefined, 
+        profile: user.profile ?? undefined 
+      });
     } catch (error) {
       this.logger.error(`Get profile error: ${error.message}`, error.stack);
       throw error;

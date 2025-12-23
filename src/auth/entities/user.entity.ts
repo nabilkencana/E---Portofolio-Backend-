@@ -1,5 +1,5 @@
 // src/auth/entities/user.entity.ts
-import { Exclude } from 'class-transformer';
+import { Exclude, Transform } from 'class-transformer';
 
 export class ProfileEntity {
     id: string;
@@ -20,13 +20,15 @@ export class ProfileEntity {
 export class UserEntity {
     id: string;
     email: string;
-    name?: string | null;
+    name?: string;
     role: string;
     emailVerified: boolean;
+
+    @Transform(({ value }) => value || null)
+    profile?: ProfileEntity ;
+
     createdAt: Date;
     updatedAt: Date;
-    profile?: ProfileEntity | null;
-
     @Exclude()
     password: string;
 

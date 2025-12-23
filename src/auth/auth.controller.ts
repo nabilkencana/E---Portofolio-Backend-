@@ -129,6 +129,7 @@ export class AuthController {
       }
     }
   })
+  
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -320,6 +321,8 @@ export class AuthController {
     }
   })
   async getCurrentUser(@CurrentUser() user: UserEntity) {
+    // Get full user data with profile
+    const fullUser = await this.authService.getProfile(user.id);
     return {
       message: 'Data pengguna berhasil diambil',
       data: user,

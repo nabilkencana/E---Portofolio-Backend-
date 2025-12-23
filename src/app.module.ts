@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PrismaService } from './prisma/prisma.service';
 import { AppController } from './app.controller';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -17,11 +18,12 @@ import { AppController } from './app.controller';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute
-        limit: 10, // 10 requests per minute
+        limit: 100, 
       },
     ]),
     PrismaModule,
     AuthModule,
+    DashboardModule,
   ],
   controllers: [AppController], // Tambahkan ini
   providers: [
