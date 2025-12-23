@@ -24,7 +24,7 @@ async function bootstrap() {
       process.env.FRONTEND_URL || 'http://localhost:8080',
       'http://localhost:8080',
       // Tambahkan domain Railway jika diperlukan
-      `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'https://e-portofolio-backend-production.up.railway.app/p'}`,
+      `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'https://e-portofolio-backend-production.up.railway.app'}`,
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
