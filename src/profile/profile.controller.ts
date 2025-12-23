@@ -1,4 +1,3 @@
-// src/profile/profile.controller.ts
 import {
   Controller,
   Get,
@@ -10,6 +9,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,7 +24,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagg
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ProfileController {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(private readonly profileService: ProfileService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get complete user profile' })
@@ -60,13 +60,19 @@ export class ProfileController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif)$/ }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif|webp)$/ }),
         ],
       }),
     )
     avatar: Express.Multer.File,
   ) {
     return await this.profileService.uploadAvatar(user.id, avatar);
+  }
+
+  @Delete('avatar')
+  @ApiOperation({ summary: 'Delete profile avatar' })
+  async deleteAvatar(@CurrentUser() user: any) {
+    return await this.profileService.deleteAvatar(user.id);
   }
 
   @Get('schools')

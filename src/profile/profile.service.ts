@@ -1,14 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateTeacherDetailDto } from './dto/update-teacher-detail.dto';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ProfileService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
+  ) { }
 
   async getCompleteProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -42,9 +43,22 @@ export class ProfileService {
     // Transform response
     const { password, refreshToken, refreshTokenExp, ...userWithoutSensitive } = user;
 
+    // Optimize avatar URL if exists
+    let optimizedProfile = userWithoutSensitive.profile;
+    if (optimizedProfile?.avatarUrl) {
+      try {
+        optimizedProfile.avatarUrl = await this.cloudinaryService.optimizeImage(
+          optimizedProfile.avatarUrl,
+        );
+      } catch (error) {
+        console.error('Failed to optimize image URL:', error);
+      }
+    }
+
     return {
       ...userWithoutSensitive,
-      teacherDetail: user.teacher_detail, // Rename for frontend compatibility
+      profile: optimizedProfile,
+      teacherDetail: user.teacher_detail,
     };
   }
 
@@ -158,44 +172,111 @@ export class ProfileService {
       throw new NotFoundException('User not found');
     }
 
-    // Create uploads directory if not exists
-    const uploadDir = path.join(process.cwd(), 'uploads', 'avatars');
-    await fs.mkdir(uploadDir, { recursive: true });
+    // Validate file
+    if (!avatar.mimetype.startsWith('image/')) {
+      throw new BadRequestException('File harus berupa gambar');
+    }
 
-    // Generate unique filename
-    const fileExt = path.extname(avatar.originalname);
-    const fileName = `${uuidv4()}${fileExt}`;
-    const filePath = path.join(uploadDir, fileName);
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (avatar.size > maxSize) {
+      throw new BadRequestException('Ukuran file maksimal 5MB');
+    }
 
-    // Save file
-    await fs.writeFile(filePath, avatar.buffer);
+    try {
+      // Upload to Cloudinary
+      const uploadResult = await this.cloudinaryService.uploadImage(avatar, 'e-portofolio/avatars');
 
-    // Update profile with avatar URL
-    const avatarUrl = `/uploads/avatars/${fileName}`;
+      // Get existing profile to check for old avatar
+      const existingProfile = await this.prisma.profile.findUnique({
+        where: { userId },
+      });
+
+      // Delete old avatar from Cloudinary if exists
+      if (existingProfile?.avatarUrl) {
+        try {
+          // Extract public_id from URL
+          const urlParts = existingProfile.avatarUrl.split('/');
+          const publicIdWithExtension = urlParts.slice(-2).join('/');
+          const publicId = publicIdWithExtension.split('.')[0];
+
+          await this.cloudinaryService.deleteImage(publicId);
+        } catch (deleteError) {
+          console.error('Failed to delete old avatar:', deleteError);
+          // Continue anyway
+        }
+      }
+
+      const avatarUrl = uploadResult.secure_url;
+
+      if (existingProfile) {
+        await this.prisma.profile.update({
+          where: { userId },
+          data: { avatarUrl },
+        });
+      } else {
+        await this.prisma.profile.create({
+          data: {
+            userId,
+            avatarUrl,
+            email: user.email,
+          },
+        });
+      }
+
+      return {
+        message: 'Avatar berhasil diupload',
+        avatarUrl,
+        publicId: uploadResult.public_id,
+        format: uploadResult.format,
+        bytes: uploadResult.bytes,
+      };
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      throw new BadRequestException('Gagal mengupload avatar: ' + error.message);
+    }
+  }
+
+  async deleteAvatar(userId: string) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
     const existingProfile = await this.prisma.profile.findUnique({
       where: { userId },
     });
 
-    if (existingProfile) {
-      await this.prisma.profile.update({
-        where: { userId },
-        data: { avatarUrl },
-      });
-    } else {
-      await this.prisma.profile.create({
-        data: {
-          userId,
-          avatarUrl,
-          email: user.email,
-        },
-      });
+    if (!existingProfile?.avatarUrl) {
+      throw new BadRequestException('User tidak memiliki avatar');
     }
 
-    return {
-      message: 'Avatar uploaded successfully',
-      avatarUrl,
-    };
+    try {
+      // Extract public_id from URL
+      const urlParts = existingProfile.avatarUrl.split('/');
+      const publicIdWithExtension = urlParts.slice(-2).join('/');
+      const publicId = publicIdWithExtension.split('.')[0];
+
+      // Delete from Cloudinary
+      await this.cloudinaryService.deleteImage(publicId);
+
+      // Update database
+      await this.prisma.profile.update({
+        where: { userId },
+        data: { avatarUrl: null },
+      });
+
+      return {
+        message: 'Avatar berhasil dihapus',
+      };
+    } catch (error) {
+      console.error('Failed to delete avatar:', error);
+      throw new BadRequestException('Gagal menghapus avatar');
+    }
   }
 
   async getSchools() {
