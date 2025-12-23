@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PrismaService } from './prisma/prisma.service';
 import { AppController } from './app.controller';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     PrismaModule,
     AuthModule,
     DashboardModule,
+    ProfileModule,
   ],
   controllers: [AppController], // Tambahkan ini
   providers: [

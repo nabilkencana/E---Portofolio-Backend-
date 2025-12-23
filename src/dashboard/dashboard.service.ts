@@ -1,4 +1,3 @@
-// src/dashboard/dashboard.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -71,16 +70,9 @@ export class DashboardService {
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
-        category: {
-          select: {
-            name: true,
-          },
-        },
+        category: true,
         attachments: {
           take: 1,
-          select: {
-            id: true,
-          },
         },
       },
     });
@@ -101,62 +93,71 @@ export class DashboardService {
   }
 
   async getProfileCompletion(userId: string) {
-    // Get user with all related data
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
         profile: true,
+        teacher_detail: true,
+        educations: true,
+        experiences: true,
+        skills: true,
+        subjects: true,
       },
     });
 
-    // Get counts separately to avoid complex includes
-    const [experiences, skills, subjects] = await Promise.all([
-      this.prisma.experience.count({
-        where: { userId },
-      }),
-      this.prisma.skill.count({
-        where: { userId },
-      }),
-      this.prisma.subject.count({
-        where: { userId },
-      }),
-    ]);
-
-    if (!user) return { percentage: 0, completed: 0, total: 8, missingFields: [] };
+    if (!user || !user.profile) {
+      return {
+        percentage: 0,
+        completed: 0,
+        total: 10,
+        missingFields: [],
+      };
+    }
 
     let completionScore = 0;
-    const totalFields = 8; // Total fields to check
+    const totalFields = 10; // Total fields to check
 
-    // Check each field
-    if (user.name && user.name.trim().length > 0) completionScore++;
-    if (user.profile?.phone) completionScore++;
-    if (user.profile?.institution) completionScore++;
-    if (user.profile?.position) completionScore++;
-    if (user.profile?.address) completionScore++;
-    if (user.profile?.avatarUrl) completionScore++;
-    if (experiences > 0) completionScore++;
-    if (skills > 0) completionScore++;
-    if (subjects > 0) completionScore++;
+    // Basic info
+    if (user.profile.name) completionScore++;
+    if (user.profile.nip) completionScore++;
+    if (user.profile.phone) completionScore++;
+    if (user.profile.schoolId) completionScore++;
+
+    // Teacher details
+    const teacherDetail = user.teacher_detail;
+    if (teacherDetail?.subjectTaught) completionScore++;
+    if (teacherDetail?.competencies) completionScore++;
+    if (teacherDetail?.educationLevel) completionScore++;
+    if (teacherDetail?.yearsOfExperience) completionScore++;
+
+    // Additional info
+    if (user.educations.length > 0) completionScore++;
+    if (user.experiences.length > 0) completionScore++;
+    if (user.skills.length > 0) completionScore++;
+    if (user.subjects.length > 0) completionScore++;
 
     const completionPercentage = Math.round((completionScore / totalFields) * 100);
 
     // Get missing fields
     const missingFields: string[] = [];
-    if (!user.name || user.name.trim().length === 0) missingFields.push('Nama Lengkap');
-    if (!user.profile?.phone) missingFields.push('Nomor Telepon');
-    if (!user.profile?.institution) missingFields.push('Institusi');
-    if (!user.profile?.position) missingFields.push('Jabatan');
-    if (!user.profile?.address) missingFields.push('Alamat');
-    if (!user.profile?.avatarUrl) missingFields.push('Foto Profil');
-    if (experiences === 0) missingFields.push('Pengalaman Kerja');
-    if (skills === 0) missingFields.push('Keahlian');
-    if (subjects === 0) missingFields.push('Mata Pelajaran');
+    if (!user.profile.name) missingFields.push('Nama Lengkap');
+    if (!user.profile.nip) missingFields.push('NIP');
+    if (!user.profile.phone) missingFields.push('Nomor Telepon');
+    if (!user.profile.schoolId) missingFields.push('Sekolah');
+    if (!teacherDetail?.subjectTaught) missingFields.push('Mata Pelajaran');
+    if (!teacherDetail?.competencies) missingFields.push('Kompetensi');
+    if (!teacherDetail?.educationLevel) missingFields.push('Tingkat Pendidikan');
+    if (!teacherDetail?.yearsOfExperience) missingFields.push('Pengalaman Mengajar');
+    if (user.educations.length === 0) missingFields.push('Pendidikan');
+    if (user.experiences.length === 0) missingFields.push('Pengalaman Kerja');
+    if (user.skills.length === 0) missingFields.push('Keahlian');
+    if (user.subjects.length === 0) missingFields.push('Mata Pelajaran yang Diajarkan');
 
     return {
       percentage: completionPercentage,
       completed: completionScore,
       total: totalFields,
-      missingFields,
+      missingFields: missingFields.slice(0, 5),
     };
   }
 

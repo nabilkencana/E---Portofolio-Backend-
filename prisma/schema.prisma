@@ -11,47 +11,87 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                                             String         @id @default(cuid())
-  email                                          String         @unique
-  name                                           String?
-  password          String    // Hashed password
-  emailVerified                                  Boolean        @default(false)
-  refreshToken                                   String?
-  refreshTokenExp                                DateTime?
-  role                                           UserRole       @default(USER)
-  createdAt                                      DateTime       @default(now())
-  updatedAt                                      DateTime       @updatedAt
+  id               String        @id @default(cuid())
+  email            String        @unique
+  name             String?
+  password         String
+  emailVerified    Boolean       @default(false)
+  refreshToken     String?
+  refreshTokenExp  DateTime?
+  role             UserRole      @default(USER)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  //                                             Relations
-  profile                                        Profile?
-  achivements                                    Achievement[]
-  experiences                                    Experience[]
-  educations                                     Education[]
-  skiils                                         Skill[]
-  subjects                                       Subject[]
+  // Relations
+  profile          Profile?
+  achievements     Achievement[]
+  experiences      Experience[]
+  educations       Education[]
+  skills           Skill[]
+  subjects         Subject[]
+  teacher_detail   TeacherDetail?
 
   @@map("users")
 }
 
+// Profile Backend
 model Profile {
-  id          String    @id @default(cuid())
-  userId      String    @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nip         String?
-  institution String?
-  position    String?
-  phone       String?
-  address     String?
-  avatarUrl   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  nip       String?   @unique
+  email     String?
+  phone     String?
+  schoolId  String?
+  school    School?   @relation(fields: [schoolId], references: [id])
+  avatarUrl String?
+  address   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("profiles")
+}
+
+model School {
+  id         String    @id @default(cuid())
+  schoolCode String    @unique
+  schoolName String
+  schoolType String
+  address    String?
+  city       String?
+  province   String?
+  postalCode String?
+  phone      String?
+  email      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  users      Profile[]
+
+  @@map("schools")
+}
+
+model TeacherDetail {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectTaught       String?
+  competencies        String?
+  educationLevel      String?
+  yearsOfExperience   Int?
+  teachingCertificate String?
+  certificationNumber String?
+  specialization      String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("teacher_details")
 }
 
 enum UserRole {
@@ -72,52 +112,52 @@ model VerificationToken {
 
 //Dashboard Backend
 model Achievement {
-  id                                                 String                   @id @default(cuid())
-  userId                                             String
-  user                                               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title                                              String
-  description                                        String?
-  categoryId                                         String?
-  category                                           Category?               @relation(fields: [categoryId], references: [id])
-  type                                               String                   @default("SERTIFIKAT") // SERTIFIKAT, PRESTASI, PENGHARGAAN
-  issuedBy                                           String?
-  issueDate                                          DateTime?
-  expiryDate                                         DateTime?
-  status                                             Status                   @default(PENDING)
-  score       Int?       // For ranking achievements
-  notes       String?    // Admin notes
-  createdAt                                          DateTime                 @default(now())
-  updatedAt                                          DateTime                 @updatedAt
+  id          String     @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  type        String    @default("SERTIFIKAT")
+  issuedBy    String?
+  issueDate   DateTime?
+  expiryDate  DateTime?
+  status      Status    @default(PENDING)
+  score       Int?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  attachments                                        AchievementAttachment[]
+  attachments AchievementAttachment[]
 
   @@map("achievements")
 }
 
 model AchievementAttachment {
-  id                                    String       @id @default(cuid())
-  achievementId                         String
-  achievement                           Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
-  filename                              String
-  originalName                          String
-  mimeType                              String
-  size           Int        // in bytes
-  url                                   String
-  isVerified                            Boolean      @default(false)
-  uploadedAt                            DateTime     @default(now())
+  id           String     @id @default(cuid())
+  achievementId String
+  achievement  Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  isVerified   Boolean    @default(false)
+  uploadedAt   DateTime   @default(now())
 
   @@map("achievement_attachments")
 }
 
 model Category {
-  id                                                  String         @id @default(cuid())
-  name                                                String         @unique
-  slug                                                String         @unique
-  type      String   // PRESTASI, SERTIFIKAT, LAINNYA
-  createdAt                                           DateTime       @default(now())
-  updatedAt                                           DateTime       @updatedAt
+  id        String       @id @default(cuid())
+  name      String       @unique
+  slug      String       @unique
+  type      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  achievements                                        Achievement[]
+  achievements Achievement[]
 
   @@map("categories")
 }
@@ -130,17 +170,17 @@ enum Status {
 }
 
 model Experience {
-  id          String     @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   company     String
   position    String
   description String?
   startDate   DateTime
   endDate     DateTime?
-  isCurrent   Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  isCurrent   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("experiences")
 }
@@ -151,7 +191,7 @@ model Education {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   institution String
   degree      String
-  field       String
+  field       String?
   startYear   Int
   endYear     Int?
   isCurrent   Boolean   @default(false)
@@ -162,26 +202,26 @@ model Education {
 }
 
 model Skill {
-  id                                                           String    @id @default(cuid())
-  userId                                                       String
-  user                                                         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                                                         String
-  level                                                        String    @default("INTERMEDIATE") // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
-  category  String?  // TECHNICAL, SOFT_SKILL, TEACHING, OTHER
-  createdAt                                                    DateTime  @default(now())
-  updatedAt                                                    DateTime  @updatedAt
+  id        String    @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  level     String    @default("INTERMEDIATE")
+  category  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("skills")
 }
 
 model Subject {
-  id                                          String    @id @default(cuid())
-  userId                                      String
-  user                                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                                        String
-  level     String?  // SD, SMP, SMA, SMK, PT
-  createdAt                                   DateTime  @default(now())
-  updatedAt                                   DateTime  @updatedAt
+  id        String    @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  level     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("subjects")
 }

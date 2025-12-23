@@ -138,8 +138,6 @@ export class AuthService {
         throw new UnauthorizedException('Email atau password salah');
       }
 
-      // TEMPORARY: Auto verify email for development
-      // Remove this in production
       if (!user.emailVerified) {
         await this.prisma.user.update({
           where: { id: user.id },
@@ -151,14 +149,78 @@ export class AuthService {
       const tokens = await this.generateTokens(user.id, user.email, user.role);
 
       // Save refresh token to database
-      await this.executeWithRetry(async () => {
-        await this.updateRefreshToken(user.id, tokens.refreshToken);
-      }, 'updateRefreshTokenLogin');
+      await this.updateRefreshToken(user.id, tokens.refreshToken);
 
-      this.logger.log(`User logged in: ${user.email}`);
+      // Get user with profile for response
+      const userWithProfile = await this.prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          profile: {
+            include: {
+              school: true,
+            },
+          },
+          teacher_detail: true,
+        },
+      });
+
+      if (!userWithProfile) {
+        throw new UnauthorizedException('User data not found');
+      }
+
+      // Pada bagian login setelah mendapatkan userWithProfile
+      const userData: Partial<UserEntity> = {
+        id: userWithProfile.id,
+        email: userWithProfile.email,
+        name: userWithProfile.name,
+        role: userWithProfile.role,
+        emailVerified: userWithProfile.emailVerified,
+        createdAt: userWithProfile.createdAt,
+        updatedAt: userWithProfile.updatedAt,
+        profile: userWithProfile.profile ? {
+          id: userWithProfile.profile.id,
+          userId: userWithProfile.profile.userId,
+          name: userWithProfile.profile.name,
+          nip: userWithProfile.profile.nip,
+          email: userWithProfile.profile.email,
+          phone: userWithProfile.profile.phone,
+          schoolId: userWithProfile.profile.schoolId,
+          avatarUrl: userWithProfile.profile.avatarUrl,
+          address: userWithProfile.profile.address,
+          createdAt: userWithProfile.profile.createdAt,
+          updatedAt: userWithProfile.profile.updatedAt,
+          school: userWithProfile.profile.school ? {
+            id: userWithProfile.profile.school.id,
+            schoolCode: userWithProfile.profile.school.schoolCode,
+            schoolName: userWithProfile.profile.school.schoolName,
+            schoolType: userWithProfile.profile.school.schoolType,
+            address: userWithProfile.profile.school.address,
+            city: userWithProfile.profile.school.city,
+            province: userWithProfile.profile.school.province,
+            postalCode: userWithProfile.profile.school.postalCode,
+            phone: userWithProfile.profile.school.phone,
+            email: userWithProfile.profile.school.email,
+            createdAt: userWithProfile.profile.school.createdAt,
+            updatedAt: userWithProfile.profile.school.updatedAt,
+          } : null,
+        } : null,
+        teacherDetail: userWithProfile.teacher_detail ? {
+          id: userWithProfile.teacher_detail.id,
+          userId: userWithProfile.teacher_detail.userId,
+          subjectTaught: userWithProfile.teacher_detail.subjectTaught,
+          competencies: userWithProfile.teacher_detail.competencies,
+          educationLevel: userWithProfile.teacher_detail.educationLevel,
+          yearsOfExperience: userWithProfile.teacher_detail.yearsOfExperience,
+          teachingCertificate: userWithProfile.teacher_detail.teachingCertificate,
+          certificationNumber: userWithProfile.teacher_detail.certificationNumber,
+          specialization: userWithProfile.teacher_detail.specialization,
+          createdAt: userWithProfile.teacher_detail.createdAt,
+          updatedAt: userWithProfile.teacher_detail.updatedAt,
+        } : null,
+      };
 
       return {
-        user: new UserEntity({ ...user, name: user.name ?? undefined }),
+        user: new UserEntity(userData),
         ...tokens,
       };
     } catch (error) {
@@ -315,27 +377,74 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          profile: true,
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: {
+          include: {
+            school: true,
+          },
         },
-      });
+        teacher_detail: true,
+      },
+    });
 
-      if (!user) {
-        throw new UnauthorizedException('Pengguna tidak ditemukan');
-      }
-
-      return new UserEntity({ 
-        ...user, 
-        name: user.name ?? undefined, 
-        profile: user.profile ?? undefined 
-      });
-    } catch (error) {
-      this.logger.error(`Get profile error: ${error.message}`, error.stack);
-      throw error;
+    if (!user) {
+      throw new UnauthorizedException('Pengguna tidak ditemukan');
     }
+
+    // Transform data untuk UserEntity
+    const userData: Partial<UserEntity> = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      profile: user.profile ? {
+        id: user.profile.id,
+        userId: user.profile.userId,
+        name: user.profile.name,
+        nip: user.profile.nip,
+        email: user.profile.email,
+        phone: user.profile.phone,
+        schoolId: user.profile.schoolId,
+        avatarUrl: user.profile.avatarUrl,
+        address: user.profile.address,
+        createdAt: user.profile.createdAt,
+        updatedAt: user.profile.updatedAt,
+        school: user.profile.school ? {
+          id: user.profile.school.id,
+          schoolCode: user.profile.school.schoolCode,
+          schoolName: user.profile.school.schoolName,
+          schoolType: user.profile.school.schoolType,
+          address: user.profile.school.address,
+          city: user.profile.school.city,
+          province: user.profile.school.province,
+          postalCode: user.profile.school.postalCode,
+          phone: user.profile.school.phone,
+          email: user.profile.school.email,
+          createdAt: user.profile.school.createdAt,
+          updatedAt: user.profile.school.updatedAt,
+        } : null,
+      } : null,
+      teacherDetail: user.teacher_detail ? {
+        id: user.teacher_detail.id,
+        userId: user.teacher_detail.userId,
+        subjectTaught: user.teacher_detail.subjectTaught,
+        competencies: user.teacher_detail.competencies,
+        educationLevel: user.teacher_detail.educationLevel,
+        yearsOfExperience: user.teacher_detail.yearsOfExperience,
+        teachingCertificate: user.teacher_detail.teachingCertificate,
+        certificationNumber: user.teacher_detail.certificationNumber,
+        specialization: user.teacher_detail.specialization,
+        createdAt: user.teacher_detail.createdAt,
+        updatedAt: user.teacher_detail.updatedAt,
+      } : null,
+    };
+
+    return new UserEntity(userData);
   }
 
   // Helper methods
