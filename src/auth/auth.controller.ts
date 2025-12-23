@@ -28,66 +28,27 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Registrasi pengguna baru' })
-  @ApiResponse({
-    status: 201,
-    description: 'Registrasi berhasil',
-    schema: {
-      example: {
-        message: 'Registrasi berhasil! Silakan login.',
-        user: {
-          id: 'uuid',
-          email: 'user@example.com',
-          name: 'John Doe',
-          role: 'USER',
-          emailVerified: false,
-          createdAt: '2024-01-01T00:00:00.000Z',
-          updatedAt: '2024-01-01T00:00:00.000Z',
-        },
-        accessToken: 'eyJhbGciOiJIUzI1NiIs...',
-      }
-    }
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Email sudah terdaftar',
-    schema: {
-      example: {
-        statusCode: 409,
-        message: 'Email sudah terdaftar',
-        error: 'Conflict'
-      }
-    }
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Data tidak valid',
-    schema: {
-      example: {
-        statusCode: 400,
-        message: [
-          {
-            property: 'email',
-            message: 'Format email tidak valid'
-          }
-        ],
-        error: 'Bad Request'
-      }
-    }
-  })
   async register(
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) response: Response,
   ) {
     const authData = await this.authService.register(dto);
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
     // Set refresh token as HTTP-only cookie
     response.cookie('refresh_token', authData.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
+      domain: isProduction ? '.railway.app' : undefined,
     });
+
+    // Set header untuk CORS
+    response.header('Access-Control-Allow-Credentials', 'true');
+    response.header('Access-Control-Expose-Headers', 'Set-Cookie');
 
     return {
       message: 'Registrasi berhasil! Silakan login.',
@@ -98,52 +59,25 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login pengguna' })
-  @ApiResponse({
-    status: 200,
-    description: 'Login berhasil',
-    schema: {
-      example: {
-        message: 'Login berhasil',
-        user: {
-          id: 'uuid',
-          email: 'user@example.com',
-          name: 'John Doe',
-          role: 'USER',
-          emailVerified: false,
-          createdAt: '2024-01-01T00:00:00.000Z',
-          updatedAt: '2024-01-01T00:00:00.000Z',
-        },
-        accessToken: 'eyJhbGciOiJIUzI1NiIs...',
-      }
-    }
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Kredensial tidak valid',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: 'Email atau password salah',
-        error: 'Unauthorized'
-      }
-    }
-  })
-  
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
     const authData = await this.authService.login(dto);
 
-    // Set refresh token as HTTP-only cookie
+    const isProduction = process.env.NODE_ENV === 'production';
+
     response.cookie('refresh_token', authData.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
+      domain: isProduction ? '.railway.app' : undefined,
     });
+
+    response.header('Access-Control-Allow-Credentials', 'true');
+    response.header('Access-Control-Expose-Headers', 'Set-Cookie');
 
     return {
       message: 'Login berhasil',
