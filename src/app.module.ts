@@ -13,6 +13,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { SchoolService } from './school/school.service';
 import { SchoolController } from './school/school.controller';
 import { SchoolModule } from './school/school.module';
+import { AchievementsModule } from './achievement/achievement.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { SchoolModule } from './school/school.module';
     DashboardModule,
     ProfileModule,
     CloudinaryModule,
-    SchoolModule
+    SchoolModule,
+    AchievementsModule
   ],
   controllers: [AppController, SchoolController], // Tambahkan ini
   providers: [

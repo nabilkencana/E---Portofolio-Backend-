@@ -187,7 +187,7 @@ export class ProfileService {
 
     try {
       // Upload to Cloudinary
-      const uploadResult = await this.cloudinaryService.uploadImage(avatar, 'e-portofolio/avatars');
+      const uploadResult = await this.cloudinaryService.uploadAvatar(avatar, 'e-portofolio/avatars');
 
       // Get existing profile to check for old avatar
       const existingProfile = await this.prisma.profile.findUnique({
@@ -202,7 +202,7 @@ export class ProfileService {
           const publicIdWithExtension = urlParts.slice(-2).join('/');
           const publicId = publicIdWithExtension.split('.')[0];
 
-          await this.cloudinaryService.deleteImage(publicId);
+          await this.cloudinaryService.deleteFile(publicId);
         } catch (deleteError) {
           console.error('Failed to delete old avatar:', deleteError);
           // Continue anyway
@@ -264,7 +264,7 @@ export class ProfileService {
       const publicId = publicIdWithExtension.split('.')[0];
 
       // Delete from Cloudinary
-      await this.cloudinaryService.deleteImage(publicId);
+      await this.cloudinaryService.deleteFile(publicId);
 
       // Update database
       await this.prisma.profile.update({
