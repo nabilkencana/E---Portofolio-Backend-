@@ -160,6 +160,9 @@ export class SchoolService {
                     { schoolName: { contains: search, mode: 'insensitive' } },
                     { npsn: { contains: search, mode: 'insensitive' } },
                     { address: { contains: search, mode: 'insensitive' } },
+                    { schoolType: { contains: search, mode: "insensitive" } }, // 🔥 WAJIB
+                    { city: { contains: search, mode: "insensitive" } },
+                    { province: { contains: search, mode: "insensitive" } },
                 ],
             },
             select: {

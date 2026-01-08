@@ -1,0 +1,164 @@
+[
+  {
+    "npsn": "20533535",
+    "schoolName": "SMK Telkom Malang",
+    "schoolType": "SMK",
+    "schoolLevel": "SWASTA",
+    "city": "Malang",
+    "province": "Jawa Timur",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20100001",
+    "schoolName": "SMA Negeri 1 Jakarta",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Jakarta Pusat",
+    "province": "DKI Jakarta",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20100002",
+    "schoolName": "SMA Negeri 2 Jakarta",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Jakarta Selatan",
+    "province": "DKI Jakarta",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20200001",
+    "schoolName": "SMA Negeri 1 Bandung",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Bandung",
+    "province": "Jawa Barat",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20200002",
+    "schoolName": "SMA Negeri 3 Bandung",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Bandung",
+    "province": "Jawa Barat",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20300001",
+    "schoolName": "SMK Negeri 1 Surabaya",
+    "schoolType": "SMK",
+    "schoolLevel": "NEGERI",
+    "city": "Surabaya",
+    "province": "Jawa Timur",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20300002",
+    "schoolName": "SMK Negeri 2 Surabaya",
+    "schoolType": "SMK",
+    "schoolLevel": "NEGERI",
+    "city": "Surabaya",
+    "province": "Jawa Timur",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20400001",
+    "schoolName": "SMA Negeri 1 Yogyakarta",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Yogyakarta",
+    "province": "DI Yogyakarta",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20500001",
+    "schoolName": "SMA Negeri 1 Malang",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Malang",
+    "province": "Jawa Timur",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20600001",
+    "schoolName": "SMK Negeri 1 Semarang",
+    "schoolType": "SMK",
+    "schoolLevel": "NEGERI",
+    "city": "Semarang",
+    "province": "Jawa Tengah",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20700001",
+    "schoolName": "SMA Negeri 1 Medan",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Medan",
+    "province": "Sumatera Utara",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20800001",
+    "schoolName": "SMA Negeri 1 Makassar",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Makassar",
+    "province": "Sulawesi Selatan",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "20900001",
+    "schoolName": "SMA Negeri 1 Denpasar",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Denpasar",
+    "province": "Bali",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "21000001",
+    "schoolName": "SMK Negeri 1 Batam",
+    "schoolType": "SMK",
+    "schoolLevel": "NEGERI",
+    "city": "Batam",
+    "province": "Kepulauan Riau",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "21100001",
+    "schoolName": "SMA Negeri 1 Palembang",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Palembang",
+    "province": "Sumatera Selatan",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "21200001",
+    "schoolName": "SMK Negeri 1 Balikpapan",
+    "schoolType": "SMK",
+    "schoolLevel": "NEGERI",
+    "city": "Balikpapan",
+    "province": "Kalimantan Timur",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "21300001",
+    "schoolName": "SMA Negeri 1 Manado",
+    "schoolType": "SMA",
+    "schoolLevel": "NEGERI",
+    "city": "Manado",
+    "province": "Sulawesi Utara",
+    "accreditation": "A"
+  },
+  {
+    "npsn": "21400001",
+    "schoolName": "SMK Negeri 1 Jayapura",
+    "schoolType": "SMK",
+    "schoolLevel": "NEGERI",
+    "city": "Jayapura",
+    "province": "Papua",
+    "accreditation": "B"
+  }
+]
