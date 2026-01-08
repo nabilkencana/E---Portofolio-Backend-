@@ -32,4 +32,9 @@ export class UpdateProfileDto {
     @IsString()
     @IsOptional()
     schoolId?: string;
+
+    @ApiProperty({ description: 'Address', required: false })
+    @IsString()
+    @IsOptional()
+    address?: string;
 }

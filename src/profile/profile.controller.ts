@@ -10,6 +10,8 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Delete,
+  Post,
+  Req
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,6 +20,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateTeacherDetailDto } from './dto/update-teacher-detail.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { CreateEducationDto } from './dto/create-education.dto';
+import { CreateExperienceDto } from './dto/create-experience.dto';
+import { CreateSkillDto } from './dto/create-skill.dto';
+import { CreateSubjectDto } from './dto/create-subject.dto';
 
 @ApiTags('Profile')
 @Controller('profile')
@@ -86,4 +92,38 @@ export class ProfileController {
   async getProfileCompletion(@CurrentUser() user: any) {
     return await this.profileService.getProfileCompletion(user.id);
   }
+
+  @Post('education')
+  addEducation(@Req() req, @Body() dto: CreateEducationDto) {
+    return this.profileService.addEducation(req.user.id, dto);
+  }
+
+  @Post('skills')
+  @UseGuards(JwtAuthGuard)
+  addSkill(
+    @Req() req,
+    @Body() dto: CreateSkillDto,
+  ) {
+    return this.profileService.addSkill(req.user.id, dto);
+  }
+
+
+  @Post('experiences')
+  @UseGuards(JwtAuthGuard)
+  addExperience(
+    @Req() req,
+    @Body() dto: CreateExperienceDto,
+  ) {
+    return this.profileService.addExperience(req.user.id, dto);
+  }
+
+  @Post('subjects')
+  @UseGuards(JwtAuthGuard)
+  addSubject(
+    @Req() req,
+    @Body() dto: CreateSubjectDto,
+  ) {
+    return this.profileService.addSubject(req.user.id, dto);
+  }
+
 }

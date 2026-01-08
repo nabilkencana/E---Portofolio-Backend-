@@ -4,6 +4,10 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateTeacherDetailDto } from './dto/update-teacher-detail.dto';
 import { SchoolService } from 'src/school/school.service';
+import { CreateEducationDto } from './dto/create-education.dto';
+import { CreateExperienceDto } from './dto/create-experience.dto';
+import { CreateSkillDto } from './dto/create-skill.dto';
+import { CreateSubjectDto } from './dto/create-subject.dto';
 
 @Injectable()
 export class ProfileService {
@@ -100,10 +104,11 @@ export class ProfileService {
         where: { userId },
         data: {
           name: dto.name,
-          nip: dto.nip,
+          nip: dto.nip ? String(dto.nip) : null,
           email: dto.email || user.email,
           phone: dto.phone,
           schoolId: dto.schoolId,
+          address: dto.address || null,
         },
         include: {
           school: true,
@@ -113,15 +118,14 @@ export class ProfileService {
       return await this.prisma.profile.create({
         data: {
           userId,
-          name: dto.name,
-          nip: dto.nip,
+          name: dto.name ?? null,
+          nip: dto.nip ? String(dto.nip) : null,
           email: dto.email || user.email,
-          phone: dto.phone,
-          schoolId: dto.schoolId,
+          phone: dto.phone ?? null,
+          schoolId: dto.schoolId ?? null,
+          address: dto.address ?? null,
         },
-        include: {
-          school: true,
-        },
+        include: { school: true },
       });
     }
   }
@@ -145,10 +149,10 @@ export class ProfileService {
       return await this.prisma.teacherDetail.update({
         where: { userId },
         data: {
-          subjectTaught: dto.subjectTaught,
-          competencies: dto.competencies,
-          educationLevel: dto.educationLevel,
-          yearsOfExperience: dto.yearsOfExperience,
+          subjectTaught: dto.subjectTaught ?? existingDetails.subjectTaught,
+          competencies: dto.competencies ?? existingDetails.competencies,
+          educationLevel: dto.educationLevel ?? existingDetails.educationLevel,
+          yearsOfExperience: dto.yearsOfExperience ?? existingDetails.yearsOfExperience,
         },
       });
     } else {
@@ -319,13 +323,14 @@ export class ProfileService {
     }
 
     let completionScore = 0;
-    const totalFields = 10; // Total fields to check
+    const totalFields = 12; // Total fields to check
 
     // Basic info
     if (user.profile.name) completionScore++;
     if (user.profile.nip) completionScore++;
     if (user.profile.phone) completionScore++;
     if (user.profile.schoolId) completionScore++;
+    if (user.subjects.length > 0) completionScore++;
 
     // Teacher details
     const teacherDetail = user.teacher_detail;
@@ -361,5 +366,54 @@ export class ProfileService {
       total: totalFields,
       missingFields: missingFields.slice(0, 5),
     };
+  }
+
+  async addEducation(userId: string, dto: CreateEducationDto) {
+    return this.prisma.education.create({
+      data: {
+        userId,
+        institution: dto.institution,
+        degree: dto.degree,
+        field: dto.field ?? null,
+        startYear: dto.startYear,
+        endYear: dto.endYear ?? null,
+        isCurrent: dto.isCurrent ?? false,
+      },
+    });
+  }
+
+  async addExperience(userId: string, dto: CreateExperienceDto) {
+    return this.prisma.experience.create({
+      data: {
+        userId,
+        company: dto.company,
+        position: dto.position,
+        description: dto.description ?? null,
+        startDate: new Date(dto.startDate),
+        endDate: dto.endDate ? new Date(dto.endDate) : null,
+        isCurrent: dto.isCurrent ?? false,
+      },
+    });
+  }
+
+  async addSkill(userId: string, dto: CreateSkillDto) {
+    return this.prisma.skill.create({
+      data: {
+        userId,
+        name: dto.name,
+        level: dto.level ?? 'INTERMEDIATE',
+        category: dto.category ?? null,
+      },
+    });
+  }
+
+  async addSubject(userId: string, dto: CreateSubjectDto) {
+    return this.prisma.subject.create({
+      data: {
+        userId,
+        name: dto.name,
+        level: dto.level ?? null,
+      },
+    });
   }
 }
