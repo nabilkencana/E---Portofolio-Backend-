@@ -3,13 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateTeacherDetailDto } from './dto/update-teacher-detail.dto';
+import { SchoolService } from 'src/school/school.service';
 
 @Injectable()
 export class ProfileService {
-  schoolService: any;
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
+    private schoolService: SchoolService
   ) { }
 
   async getCompleteProfile(userId: string) {
