@@ -58,22 +58,31 @@ model Profile {
   @@map("profiles")
 }
 
+// Update model School
 model School {
-  id         String    @id @default(cuid())
-  schoolCode String    @unique
-  schoolName String
-  schoolType String
-  address    String?
-  city       String?
-  province   String?
-  postalCode String?
-  phone      String?
-  email      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  npsn         String?   @unique // Nomor Pokok Sekolah Nasional
+  schoolCode   String?   @unique // Kode sekolah
+  schoolName   String
+  schoolType   String    // SD, SMP, SMA, SMK, SLB
+  schoolLevel  String?   // NEGERI, SWASTA
+  address      String?
+  village      String?   // Desa/Kelurahan
+  subdistrict  String?   // Kecamatan
+  city         String?   // Kota/Kabupaten
+  province     String?
+  postalCode   String?
+  phone        String?
+  email        String?
+  website      String?
+  accreditation String?  // A, B, C, atau Belum Terakreditasi
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  users      Profile[]
-
+  users        Profile[]
+  
   @@map("schools")
 }
 

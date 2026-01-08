@@ -6,6 +6,7 @@ import { UpdateTeacherDetailDto } from './dto/update-teacher-detail.dto';
 
 @Injectable()
 export class ProfileService {
+  schoolService: any;
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
@@ -279,18 +280,19 @@ export class ProfileService {
     }
   }
 
-  async getSchools() {
-    return await this.prisma.school.findMany({
-      orderBy: { schoolName: 'asc' },
-      select: {
-        id: true,
-        schoolCode: true,
-        schoolName: true,
-        schoolType: true,
-        city: true,
-        province: true,
-      },
+  // src/profile/profile.service.ts - Update getSchools method
+  async getSchools(query?: {
+    province?: string;
+    city?: string;
+    schoolType?: string;
+    search?: string;
+  }) {
+    const { data } = await this.schoolService.getSchools({
+      ...query,
+      limit: 100, // Limit untuk dropdown
     });
+
+    return data;
   }
 
   async getProfileCompletion(userId: string) {

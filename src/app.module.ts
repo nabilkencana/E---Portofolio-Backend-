@@ -10,6 +10,8 @@ import { AppController } from './app.controller';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ProfileModule } from './profile/profile.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { SchoolService } from './school/school.service';
+import { SchoolController } from './school/school.controller';
 
 @Module({
   imports: [
@@ -29,13 +31,14 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
     ProfileModule,
     CloudinaryModule,
   ],
-  controllers: [AppController], // Tambahkan ini
+  controllers: [AppController, SchoolController], // Tambahkan ini
   providers: [
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
     PrismaService,
+    SchoolService,
   ],
 })
 export class AppModule { }
