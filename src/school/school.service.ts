@@ -8,7 +8,6 @@ import { firstValueFrom } from 'rxjs';
 export class SchoolService {
     constructor(
         private prisma: PrismaService,
-        private httpService: HttpService,
     ) { }
 
     async getSchools(query: {

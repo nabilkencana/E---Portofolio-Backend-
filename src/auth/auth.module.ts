@@ -8,10 +8,12 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SchoolModule } from 'src/school/school.module';
 
 @Module({
   imports: [
     PrismaModule,
+    SchoolModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
