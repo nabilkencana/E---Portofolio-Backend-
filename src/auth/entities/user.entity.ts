@@ -38,7 +38,7 @@ export class UserEntity {
         updatedAt: Date;
         school?: {
             id: string;
-            schoolCode: string;
+            schoolCode?: string | null; // ⬅ FIX
             schoolName: string;
             schoolType: string;
             address?: string | null;
@@ -50,7 +50,8 @@ export class UserEntity {
             createdAt: Date;
             updatedAt: Date;
         } | null;
-    } | null;
+    };
+
 
     teacherDetail?: {
         id: string;
