@@ -104,7 +104,7 @@ export class ProfileService {
         where: { userId },
         data: {
           name: dto.name,
-          nip: dto.nip ? String(dto.nip) : null,
+          nip: dto.nip ?? null,
           email: dto.email || user.email,
           phone: dto.phone,
           schoolId: dto.schoolId,
