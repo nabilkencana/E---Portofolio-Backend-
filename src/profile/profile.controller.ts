@@ -141,4 +141,11 @@ export class ProfileController {
     return this.profileService.getExperiences(user.id);
   }
 
+  // Di profile.controller.ts
+  @Post('completion/refresh')
+  @ApiOperation({ summary: 'Refresh profile completion data' })
+  async refreshCompletion(@CurrentUser() user: any) {
+    return await this.profileService.getProfileCompletion(user.id);
+  }
+
 }

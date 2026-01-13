@@ -317,32 +317,36 @@ export class ProfileService {
       return {
         percentage: 0,
         completed: 0,
-        total: 10,
+        total: 10, // Perbaiki: total tetap 10
         missingFields: [],
       };
     }
 
-    let completionScore = 0;
-
+    // Hitung berdasarkan ACTUAL fields yang dicek
     const checks = {
-      name: !!user.profile.name,
-      nip: !!user.profile.nip,
-      phone: !!user.profile.phone,
+      name: !!user.profile.name?.trim(),
+      nip: !!user.profile.nip?.trim(),
+      phone: !!user.profile.phone?.trim(),
       school: !!user.profile.schoolId,
-      subjectTaught: !!user.teacher_detail?.subjectTaught,
-      competencies: !!user.teacher_detail?.competencies,
-      educationLevel: !!user.teacher_detail?.educationLevel,
-      experienceYears: !!user.teacher_detail?.yearsOfExperience,
+      subjectTaught: !!user.teacher_detail?.subjectTaught?.trim(),
+      competencies: !!user.teacher_detail?.competencies?.trim(),
+      educationLevel: !!user.teacher_detail?.educationLevel?.trim(),
+      experienceYears: user.teacher_detail?.yearsOfExperience !== null &&
+        user.teacher_detail?.yearsOfExperience !== undefined,
       education: user.educations.length > 0,
       experience: user.experiences.length > 0,
+      // HAPUS skill dan subject dari completion jika tidak wajib
     };
 
-    const totalFields = Object.keys(checks).length;
+    // Total fields yang benar: 10
+    const totalFields = 10;
+    let completionScore = 0;
 
     for (const key in checks) {
       if (checks[key]) completionScore++;
     }
 
+    // Pastikan persentase tidak melebihi 100%
     const completionPercentage = Math.min(
       100,
       Math.round((completionScore / totalFields) * 100)
@@ -364,8 +368,8 @@ export class ProfileService {
     return {
       percentage: completionPercentage,
       completed: completionScore,
-      total: totalFields,
-      missingFields: missingFields.slice(0, 5),
+      total: totalFields, // Pastikan ini 10
+      missingFields,
     };
   }
 
@@ -476,17 +480,56 @@ export class ProfileService {
     return this.prisma.skill.findMany({ where: { userId } });
   }
 
+  getSubjects(userId: string) {
+    return this.prisma.subject.findMany({ where: { userId } });
+  }
+
+  // Di profile.service.ts
+  async syncSubjectTaught(userId: string) {
+    const subjects = await this.prisma.subject.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (subjects.length > 0) {
+      const subjectNames = subjects.map(s => s.name).join(', ');
+
+      await this.prisma.teacherDetail.upsert({
+        where: { userId },
+        update: { subjectTaught: subjectNames },
+        create: {
+          userId,
+          subjectTaught: subjectNames,
+        },
+      });
+    }
+  }
+
+  // Di addSubject method, tambahkan:
   async addSubject(userId: string, dto: CreateSubjectDto) {
-    return this.prisma.subject.create({
+    const existing = await this.prisma.subject.findFirst({
+      where : {
+        userId,
+        name : dto.name.trim(),
+        level : dto.level ?? null,
+      }
+    })
+
+    if (existing) {
+      throw new BadRequestException('Mata pelajaran sudah ada')
+    }
+
+    const subject = await this.prisma.subject.create({
       data: {
         userId,
         name: dto.name,
         level: dto.level ?? null,
       },
     });
-  }
 
-  getSubjects(userId: string) {
-    return this.prisma.subject.findMany({ where: { userId } });
+    // Sync ke teacher_detail
+    await this.syncSubjectTaught(userId);
+
+    return subject;
   }
 }
