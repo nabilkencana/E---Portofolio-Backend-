@@ -322,60 +322,52 @@ export class ProfileService {
       };
     }
 
-    
     let completionScore = 0;
     const totalFields = 10;
 
-    const missingFields: string[] = [];
-    const teacherDetail = user.teacher_detail;
-
-    // Basic info
+    // Basic info (4)
     if (user.profile.name) completionScore++;
-    else missingFields.push('Nama Lengkap');
-
     if (user.profile.nip) completionScore++;
-    else missingFields.push('NIP');
-
     if (user.profile.phone) completionScore++;
-    else missingFields.push('Nomor Telepon');
-
     if (user.profile.schoolId) completionScore++;
-    else missingFields.push('Sekolah');
 
-    // Teacher details
+    // Teacher details (3)
+    const teacherDetail = user.teacher_detail;
     if (teacherDetail?.competencies) completionScore++;
-    else missingFields.push('Kompetensi');
-
     if (teacherDetail?.educationLevel) completionScore++;
-    else missingFields.push('Tingkat Pendidikan');
-
     if (teacherDetail?.yearsOfExperience) completionScore++;
-    else missingFields.push('Pengalaman Mengajar');
 
-    // Mata pelajaran (PAKAI TABLE subjects)
-    if (user.subjects.length > 0) completionScore++;
-    else missingFields.push('Mata Pelajaran yang Diajarkan');
-
-    // Riwayat
+    // Additional info (3)
     if (user.educations.length > 0) completionScore++;
-    else missingFields.push('Riwayat Pendidikan');
-
     if (user.experiences.length > 0) completionScore++;
-    else missingFields.push('Pengalaman Kerja');
+    if (user.subjects.length > 0) completionScore++; // ✅ mata pelajaran dari tabel subjects
 
-    const percentage = Math.min(
+    const completionPercentage = Math.min(
       100,
       Math.round((completionScore / totalFields) * 100)
     );
 
+    const missingFields: string[] = [];
+    if (!user.profile.name) missingFields.push('Nama Lengkap');
+    if (!user.profile.nip) missingFields.push('NIP');
+    if (!user.profile.phone) missingFields.push('Nomor Telepon');
+    if (!user.profile.schoolId) missingFields.push('Sekolah');
+
+    if (!teacherDetail?.competencies) missingFields.push('Kompetensi');
+    if (!teacherDetail?.educationLevel) missingFields.push('Tingkat Pendidikan');
+    if (!teacherDetail?.yearsOfExperience) missingFields.push('Pengalaman Mengajar');
+
+    if (user.educations.length === 0) missingFields.push('Riwayat Pendidikan');
+    if (user.experiences.length === 0) missingFields.push('Pengalaman Kerja');
+    if (user.subjects.length === 0) missingFields.push('Mata Pelajaran');
+
     return {
-      percentage,
+      percentage: completionPercentage,
       completed: completionScore,
       total: totalFields,
       missingFields: missingFields.slice(0, 5),
     };
   }
-
 
   async addEducation(userId: string, dto: CreateEducationDto) {
     if (!dto.institution || !dto.degree || !dto.startYear) {
