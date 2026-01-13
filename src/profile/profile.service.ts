@@ -313,51 +313,76 @@ export class ProfileService {
       },
     });
 
-    if (!user || !user.profile) {
+    if (!user) {
       return {
         percentage: 0,
         completed: 0,
-        total: 10, // Perbaiki: total tetap 10
+        total: 10,
         missingFields: [],
       };
     }
 
-    // Hitung berdasarkan ACTUAL fields yang dicek
+    // PERBAIKAN 1: Tambah pengecekan profile
+    if (!user.profile) {
+      return {
+        percentage: 0,
+        completed: 0,
+        total: 10,
+        missingFields: [
+          'Nama Lengkap', 'NIP', 'Nomor Telepon', 'Sekolah', 'Alamat',
+          'Mata Pelajaran yang Diajarkan', 'Kompetensi', 'Tingkat Pendidikan',
+          'Pengalaman Mengajar', 'Riwayat Pendidikan', 'Pengalaman Kerja'
+        ],
+      };
+    }
+
+    // PERBAIKAN 2: Logika pengecekan yang benar
     const checks = {
+      // Profile fields (5)
       name: !!user.profile.name?.trim(),
       nip: !!user.profile.nip?.trim(),
       phone: !!user.profile.phone?.trim(),
       school: !!user.profile.schoolId,
-      subjectTaught: !!user.teacher_detail?.subjectTaught?.trim(),
+      address: !!user.profile.address?.trim(),
+
+      // Teacher detail fields (5)
+      // PERBAIKAN 3: Cek subject dari BOTH subjects table dan teacher_detail
+      subjectTaught: (user.subjects?.length > 0) || !!user.teacher_detail?.subjectTaught?.trim(),
       competencies: !!user.teacher_detail?.competencies?.trim(),
       educationLevel: !!user.teacher_detail?.educationLevel?.trim(),
-      experienceYears: user.teacher_detail?.yearsOfExperience !== null &&
-        user.teacher_detail?.yearsOfExperience !== undefined,
-      education: user.educations.length > 0,
-      experience: user.experiences.length > 0,
-      // HAPUS skill dan subject dari completion jika tidak wajib
+      experienceYears: user.teacher_detail?.yearsOfExperience != null,
+
+      // Education & Experience (2)
+      education: user.educations?.length > 0,
+      experience: user.experiences?.length > 0,
     };
 
-    // Total fields yang benar: 10
+    // PERBAIKAN 4: Total fields HARUS 10, hitung dengan benar
     const totalFields = 10;
-    let completionScore = 0;
 
-    for (const key in checks) {
-      if (checks[key]) completionScore++;
+    // PERBAIKAN 5: Hitung completed dengan benar
+    let completionScore = 0;
+    const fieldValues = Object.values(checks);
+
+    for (const value of fieldValues) {
+      if (value) completionScore++;
     }
 
-    // Pastikan persentase tidak melebihi 100%
-    const completionPercentage = Math.min(
-      100,
-      Math.round((completionScore / totalFields) * 100)
-    );
+    // PERBAIKAN 6: Pastikan tidak melebihi total
+    if (completionScore > totalFields) {
+      completionScore = totalFields;
+    }
 
+    const completionPercentage = Math.round((completionScore / totalFields) * 100);
+
+    // PERBAIKAN 7: Missing fields yang akurat
     const missingFields: string[] = [];
 
     if (!checks.name) missingFields.push('Nama Lengkap');
     if (!checks.nip) missingFields.push('NIP');
     if (!checks.phone) missingFields.push('Nomor Telepon');
     if (!checks.school) missingFields.push('Sekolah');
+    if (!checks.address) missingFields.push('Alamat');
     if (!checks.subjectTaught) missingFields.push('Mata Pelajaran yang Diajarkan');
     if (!checks.competencies) missingFields.push('Kompetensi');
     if (!checks.educationLevel) missingFields.push('Tingkat Pendidikan');
@@ -365,11 +390,14 @@ export class ProfileService {
     if (!checks.education) missingFields.push('Riwayat Pendidikan');
     if (!checks.experience) missingFields.push('Pengalaman Kerja');
 
+    // PERBAIKAN 8: Remove duplicates dan batasi
+    const uniqueMissingFields = Array.from(new Set(missingFields));
+
     return {
       percentage: completionPercentage,
       completed: completionScore,
-      total: totalFields, // Pastikan ini 10
-      missingFields,
+      total: totalFields,
+      missingFields: uniqueMissingFields,
     };
   }
 
@@ -484,7 +512,6 @@ export class ProfileService {
     return this.prisma.subject.findMany({ where: { userId } });
   }
 
-  // Di profile.service.ts
   async syncSubjectTaught(userId: string) {
     const subjects = await this.prisma.subject.findMany({
       where: { userId },
