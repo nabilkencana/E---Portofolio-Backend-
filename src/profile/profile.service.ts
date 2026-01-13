@@ -323,7 +323,7 @@ export class ProfileService {
     }
 
     let completionScore = 0;
-    const totalFields = 12; // Total fields to check
+    const totalFields = 10; // Total fields to check
 
     // Basic info
     if (user.profile.name) completionScore++;
@@ -333,7 +333,6 @@ export class ProfileService {
 
     // Teacher details
     const teacherDetail = user.teacher_detail;
-    if (user.subjects.length > 0) completionScore++;
     if (teacherDetail?.competencies) completionScore++;
     if (teacherDetail?.educationLevel) completionScore++;
     if (teacherDetail?.yearsOfExperience) completionScore++;
@@ -341,8 +340,6 @@ export class ProfileService {
     // Additional info
     if (user.educations.length > 0) completionScore++;
     if (user.experiences.length > 0) completionScore++;
-    if (user.skills.length > 0) completionScore++;
-    if (user.subjects.length > 0) completionScore++;
 
     const completionPercentage = Math.min(
       100,
@@ -355,7 +352,7 @@ export class ProfileService {
     if (!user.profile.nip) missingFields.push('NIP');
     if (!user.profile.phone) missingFields.push('Nomor Telepon');
     if (!user.profile.schoolId) missingFields.push('Sekolah');
-    if (user.subjects.length === 0)
+    if (!teacherDetail?.subjectTaught)
       missingFields.push('Mata Pelajaran yang Diajarkan');
     if (!teacherDetail?.competencies) missingFields.push('Kompetensi');
     if (!teacherDetail?.educationLevel) missingFields.push('Tingkat Pendidikan');
