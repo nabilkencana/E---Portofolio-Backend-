@@ -369,11 +369,15 @@ export class ProfileService {
   }
 
   async addEducation(userId: string, dto: CreateEducationDto) {
+    if (!dto.institution || !dto.degree || !dto.startYear) {
+      throw new BadRequestException('Data pendidikan belum lengkap');
+    }
+
     return this.prisma.education.create({
       data: {
         userId,
-        institution: dto.institution,
-        degree: dto.degree,
+        institution: dto.institution.trim(),
+        degree: dto.degree.trim(),
         field: dto.field ?? null,
         startYear: dto.startYear,
         endYear: dto.endYear ?? null,
@@ -382,30 +386,45 @@ export class ProfileService {
     });
   }
 
+
   async addExperience(userId: string, dto: CreateExperienceDto) {
+    const start = new Date(dto.startDate);
+
+    if (isNaN(start.getTime())) {
+      throw new BadRequestException('Tanggal mulai tidak valid');
+    }
+
+    const end = dto.endDate ? new Date(dto.endDate) : null;
+
     return this.prisma.experience.create({
       data: {
         userId,
-        company: dto.company,
-        position: dto.position,
+        company: dto.company.trim(),
+        position: dto.position.trim(),
         description: dto.description ?? null,
-        startDate: new Date(dto.startDate),
-        endDate: dto.endDate ? new Date(dto.endDate) : null,
+        startDate: start,
+        endDate: end,
         isCurrent: dto.isCurrent ?? false,
       },
     });
   }
 
+
   async addSkill(userId: string, dto: CreateSkillDto) {
+    if (!dto.name?.trim()) {
+      throw new BadRequestException('Nama skill wajib diisi');
+    }
+
     return this.prisma.skill.create({
       data: {
         userId,
-        name: dto.name,
+        name: dto.name.trim(),
         level: dto.level ?? 'INTERMEDIATE',
         category: dto.category ?? null,
       },
     });
   }
+
 
   async addSubject(userId: string, dto: CreateSubjectDto) {
     return this.prisma.subject.create({

@@ -1,6 +1,14 @@
-// dto/create-skill.dto.ts
+import { IsString, IsOptional } from 'class-validator';
+
 export class CreateSkillDto {
-    name: string;
-    level?: string;     // BEGINNER, INTERMEDIATE, ADVANCED
-    category?: string;  // Pedagogik, Digital, dll
+    @IsString()
+    name: string;       // ❗ WAJIB
+
+    @IsOptional()
+    @IsString()
+    level?: string;
+
+    @IsOptional()
+    @IsString()
+    category?: string;
 }

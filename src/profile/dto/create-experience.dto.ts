@@ -1,9 +1,23 @@
-// dto/create-experience.dto.ts
+import { IsString, IsOptional, IsDateString } from 'class-validator';
+
 export class CreateExperienceDto {
-    company: string;
-    position: string;
+    @IsString()
+    company: string;      // ❗ WAJIB
+
+    @IsString()
+    position: string;    // ❗ WAJIB
+
+    @IsOptional()
+    @IsString()
     description?: string;
-    startDate: string;   // ISO string
+
+    @IsDateString()
+    startDate: string;   // ❗ WAJIB (ISO Date)
+
+    @IsOptional()
+    @IsDateString()
     endDate?: string;
+
+    @IsOptional()
     isCurrent?: boolean;
 }
