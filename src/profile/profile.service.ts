@@ -330,7 +330,6 @@ export class ProfileService {
     if (user.profile.nip) completionScore++;
     if (user.profile.phone) completionScore++;
     if (user.profile.schoolId) completionScore++;
-    if (user.subjects.length > 0) completionScore++;
 
     // Teacher details
     const teacherDetail = user.teacher_detail;
@@ -345,7 +344,10 @@ export class ProfileService {
     if (user.skills.length > 0) completionScore++;
     if (user.subjects.length > 0) completionScore++;
 
-    const completionPercentage = Math.round((completionScore / totalFields) * 100);
+    const completionPercentage = Math.min(
+      100,
+      Math.round((completionScore / totalFields) * 100)
+    );
 
     // Get missing fields (show top 5 most important)
     const missingFields: string[] = [];
