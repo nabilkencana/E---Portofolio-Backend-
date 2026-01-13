@@ -323,24 +323,25 @@ export class ProfileService {
     }
 
     let completionScore = 0;
-    const totalFields = 10;
 
-    // Basic info (4)
-    if (user.profile.name) completionScore++;
-    if (user.profile.nip) completionScore++;
-    if (user.profile.phone) completionScore++;
-    if (user.profile.schoolId) completionScore++;
+    const checks = {
+      name: !!user.profile.name,
+      nip: !!user.profile.nip,
+      phone: !!user.profile.phone,
+      school: !!user.profile.schoolId,
+      subjectTaught: !!user.teacher_detail?.subjectTaught,
+      competencies: !!user.teacher_detail?.competencies,
+      educationLevel: !!user.teacher_detail?.educationLevel,
+      experienceYears: !!user.teacher_detail?.yearsOfExperience,
+      education: user.educations.length > 0,
+      experience: user.experiences.length > 0,
+    };
 
-    // Teacher details (3)
-    const teacherDetail = user.teacher_detail;
-    if (teacherDetail?.competencies) completionScore++;
-    if (teacherDetail?.educationLevel) completionScore++;
-    if (teacherDetail?.yearsOfExperience) completionScore++;
+    const totalFields = Object.keys(checks).length;
 
-    // Additional info (3)
-    if (user.educations.length > 0) completionScore++;
-    if (user.experiences.length > 0) completionScore++;
-    if (user.subjects.length > 0) completionScore++; // ✅ mata pelajaran dari tabel subjects
+    for (const key in checks) {
+      if (checks[key]) completionScore++;
+    }
 
     const completionPercentage = Math.min(
       100,
@@ -348,18 +349,17 @@ export class ProfileService {
     );
 
     const missingFields: string[] = [];
-    if (!user.profile.name) missingFields.push('Nama Lengkap');
-    if (!user.profile.nip) missingFields.push('NIP');
-    if (!user.profile.phone) missingFields.push('Nomor Telepon');
-    if (!user.profile.schoolId) missingFields.push('Sekolah');
 
-    if (!teacherDetail?.competencies) missingFields.push('Kompetensi');
-    if (!teacherDetail?.educationLevel) missingFields.push('Tingkat Pendidikan');
-    if (!teacherDetail?.yearsOfExperience) missingFields.push('Pengalaman Mengajar');
-
-    if (user.educations.length === 0) missingFields.push('Riwayat Pendidikan');
-    if (user.experiences.length === 0) missingFields.push('Pengalaman Kerja');
-    if (user.subjects.length === 0) missingFields.push('Mata Pelajaran');
+    if (!checks.name) missingFields.push('Nama Lengkap');
+    if (!checks.nip) missingFields.push('NIP');
+    if (!checks.phone) missingFields.push('Nomor Telepon');
+    if (!checks.school) missingFields.push('Sekolah');
+    if (!checks.subjectTaught) missingFields.push('Mata Pelajaran yang Diajarkan');
+    if (!checks.competencies) missingFields.push('Kompetensi');
+    if (!checks.educationLevel) missingFields.push('Tingkat Pendidikan');
+    if (!checks.experienceYears) missingFields.push('Pengalaman Mengajar');
+    if (!checks.education) missingFields.push('Riwayat Pendidikan');
+    if (!checks.experience) missingFields.push('Pengalaman Kerja');
 
     return {
       percentage: completionPercentage,
@@ -370,8 +370,23 @@ export class ProfileService {
   }
 
   async addEducation(userId: string, dto: CreateEducationDto) {
+    const existing = await this.prisma.education.findFirst({
+      where : {
+        userId,
+        institution: dto.institution.trim(),
+        degree : dto.degree.trim(),
+        startYear: dto.startYear,
+        endYear : dto.endYear ?? null,
+        isCurrent: dto.isCurrent ?? false,
+        field : dto.field ?? null,
+      }
+    })
     if (!dto.institution || !dto.degree || !dto.startYear) {
       throw new BadRequestException('Data pendidikan belum lengkap');
+    }
+
+    if (existing) {
+      throw new BadRequestException('Data pendidikan sudah ada')
     }
 
     return this.prisma.education.create({
@@ -389,6 +404,17 @@ export class ProfileService {
 
 
   async addExperience(userId: string, dto: CreateExperienceDto) {
+    const existing = await this.prisma.experience.findFirst({
+      where : {
+        userId,
+        company: dto.company.trim(),
+        position: dto.position.trim(),
+        description: dto.description ?? null, 
+        startDate: new Date(dto.startDate),
+        endDate : dto.endDate ? new Date(dto.endDate) : null,
+        isCurrent: dto.isCurrent ?? false
+      }
+    })
     const start = new Date(dto.startDate);
 
     if (isNaN(start.getTime())) {
@@ -396,6 +422,10 @@ export class ProfileService {
     }
 
     const end = dto.endDate ? new Date(dto.endDate) : null;
+    
+    if (existing) {
+      throw new BadRequestException('Data pengalamn kerja sudah ada')
+    }
 
     return this.prisma.experience.create({
       data: {
@@ -415,8 +445,21 @@ export class ProfileService {
   }
 
   async addSkill(userId: string, dto: CreateSkillDto) {
+    const existing = await this.prisma.skill.findFirst({
+      where : {
+        userId,
+        name : dto.name.trim(),
+        level: dto.level ?? 'INTERMEDIATE', 
+        category: dto.category ?? null,
+      }
+    })
+
     if (!dto.name?.trim()) {
       throw new BadRequestException('Nama skill wajib diisi');
+    }
+
+    if ( existing) {
+      throw new BadRequestException('Skill sudah ada');
     }
 
     return this.prisma.skill.create({
