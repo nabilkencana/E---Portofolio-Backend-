@@ -322,6 +322,7 @@ export class ProfileService {
       };
     }
 
+    
     let completionScore = 0;
     const totalFields = 10;
 
