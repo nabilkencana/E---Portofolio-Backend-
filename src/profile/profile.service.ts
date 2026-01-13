@@ -333,7 +333,7 @@ export class ProfileService {
 
     // Teacher details
     const teacherDetail = user.teacher_detail;
-    if (teacherDetail?.subjectTaught) completionScore++;
+    if (user.subjects.length > 0) completionScore++;
     if (teacherDetail?.competencies) completionScore++;
     if (teacherDetail?.educationLevel) completionScore++;
     if (teacherDetail?.yearsOfExperience) completionScore++;
@@ -355,12 +355,15 @@ export class ProfileService {
     if (!user.profile.nip) missingFields.push('NIP');
     if (!user.profile.phone) missingFields.push('Nomor Telepon');
     if (!user.profile.schoolId) missingFields.push('Sekolah');
-    if (!teacherDetail?.subjectTaught) missingFields.push('Mata Pelajaran');
+    if (user.subjects.length === 0)
+      missingFields.push('Mata Pelajaran yang Diajarkan');
     if (!teacherDetail?.competencies) missingFields.push('Kompetensi');
     if (!teacherDetail?.educationLevel) missingFields.push('Tingkat Pendidikan');
     if (!teacherDetail?.yearsOfExperience) missingFields.push('Pengalaman Mengajar');
     if (user.educations.length === 0) missingFields.push('Riwayat Pendidikan');
     if (user.experiences.length === 0) missingFields.push('Pengalaman Kerja');
+
+    console.log("COMPLETION DEBUG:", completionScore, totalFields);
 
     return {
       percentage: completionPercentage,
@@ -410,7 +413,10 @@ export class ProfileService {
       },
     });
   }
-
+  
+  getExperiences(userId: string) {
+    return this.prisma.experience.findMany({ where: { userId } });
+  }
 
   async addSkill(userId: string, dto: CreateSkillDto) {
     if (!dto.name?.trim()) {
@@ -427,6 +433,9 @@ export class ProfileService {
     });
   }
 
+  getSkills(userId: string) {
+    return this.prisma.skill.findMany({ where: { userId } });
+  }
 
   async addSubject(userId: string, dto: CreateSubjectDto) {
     return this.prisma.subject.create({
@@ -436,5 +445,9 @@ export class ProfileService {
         level: dto.level ?? null,
       },
     });
+  }
+
+  getSubjects(userId: string) {
+    return this.prisma.subject.findMany({ where: { userId } });
   }
 }

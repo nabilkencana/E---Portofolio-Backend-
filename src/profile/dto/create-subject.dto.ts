@@ -1,5 +1,11 @@
-// dto/create-subject.dto.ts
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+
 export class CreateSubjectDto {
-    name: string;   // contoh: Matematika
-    level?: string; // contoh: SMA, SMP, SD
+    @IsString()
+    @IsNotEmpty()
+    name: string;
+
+    @IsOptional()
+    @IsString()
+    level?: string;
 }

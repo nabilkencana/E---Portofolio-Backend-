@@ -126,4 +126,19 @@ export class ProfileController {
     return this.profileService.addSubject(req.user.id, dto);
   }
 
+  @Get('subjects')
+  getSubjects(@CurrentUser() user: any) {
+    return this.profileService.getSubjects(user.id);
+  }
+
+  @Get('skills')
+  getSkills(@CurrentUser() user: any) {
+    return this.profileService.getSkills(user.id);
+  }
+
+  @Get('experiences')
+  getExperiences(@CurrentUser() user: any) {
+    return this.profileService.getExperiences(user.id);
+  }
+
 }
