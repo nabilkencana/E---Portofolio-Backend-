@@ -300,6 +300,8 @@ export class ProfileService {
   }
 
   async getProfileCompletion(userId: string) {
+    console.log('=== DEBUG PROFILE COMPLETION START ===');
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -315,19 +317,19 @@ export class ProfileService {
       return {
         percentage: 0,
         completed: 0,
-        total: 10, // Total tetap 10, avatar TIDAK termasuk
+        total: 10,
         missingFields: [],
       };
     }
 
-    // FIX: JANGAN hitung avatar sebagai field wajib
+    // PERBAIKAN: Gunakan 10 field WAJIB saja (hapus 1 yang opsional)
     const checks = {
-      // Profile fields (5) - avatar TIDAK DIMASUKKAN
+      // Profile fields (5)
       name: !!user.profile?.name?.trim(),
       nip: !!user.profile?.nip?.trim(),
       phone: !!user.profile?.phone?.trim(),
       school: !!user.profile?.schoolId,
-      address: !!user.profile?.address?.trim(),
+      // address: !!user.profile?.address?.trim(), // HAPUS - address opsional
 
       // Teacher detail fields (4)
       subjectTaught: (user.subjects?.length > 0) || !!user.teacher_detail?.subjectTaught?.trim(),
@@ -340,16 +342,17 @@ export class ProfileService {
       experience: user.experiences?.length > 0,
     };
 
-    // DEBUG: Log untuk melihat apa yang dihitung
-    console.log('DEBUG Completion Check:', {
+    // DEBUG LOG
+    console.log('DEBUG - Checks:', {
       userId,
       checks,
-      avatarExists: !!user.profile?.avatarUrl, // Hanya untuk debug
-      totalFields: 10
+      avatarExists: !!user.profile?.avatarUrl,
+      addressExists: !!user.profile?.address?.trim(),
+      totalChecks: Object.keys(checks).length
     });
 
-    // Total fields HARUS 10 (tanpa avatar)
-    const totalFields = 10;
+    // PERBAIKAN: Total fields harus sama dengan jumlah checks
+    const totalFields = Object.keys(checks).length; // Ini akan menjadi 10
 
     let completedCount = 0;
     const checkValues = Object.values(checks);
@@ -358,28 +361,36 @@ export class ProfileService {
       if (value) completedCount++;
     }
 
-    // PASTIKAN completed tidak lebih dari total
-    if (completedCount > totalFields) {
-      console.warn('WARNING: completedCount > totalFields:', { completedCount, totalFields });
-      completedCount = totalFields;
-    }
+    console.log('DEBUG - Calculation:', {
+      completedCount,
+      totalFields,
+      percentage: Math.round((completedCount / totalFields) * 100)
+    });
 
     const percentage = Math.round((completedCount / totalFields) * 100);
 
-    // FIX: Missing fields yang benar
+    // PERBAIKAN: Missing fields sesuai checks
     const missingFields: string[] = [];
 
     if (!checks.name) missingFields.push('Nama Lengkap');
     if (!checks.nip) missingFields.push('NIP');
     if (!checks.phone) missingFields.push('Nomor Telepon');
     if (!checks.school) missingFields.push('Sekolah');
-    if (!checks.address) missingFields.push('Alamat');
+    // if (!checks.address) missingFields.push('Alamat'); // HAPUS
     if (!checks.subjectTaught) missingFields.push('Mata Pelajaran yang Diajarkan');
     if (!checks.competencies) missingFields.push('Kompetensi');
     if (!checks.educationLevel) missingFields.push('Tingkat Pendidikan');
     if (!checks.experienceYears) missingFields.push('Pengalaman Mengajar');
     if (!checks.education) missingFields.push('Riwayat Pendidikan');
     if (!checks.experience) missingFields.push('Pengalaman Kerja');
+
+    console.log('DEBUG - Final Result:', {
+      percentage,
+      completed: completedCount,
+      total: totalFields,
+      missingFields
+    });
+    console.log('=== DEBUG PROFILE COMPLETION END ===\n');
 
     return {
       percentage,
@@ -388,7 +399,7 @@ export class ProfileService {
       missingFields,
     };
   }
-  
+
   async addEducation(userId: string, dto: CreateEducationDto) {
     const existing = await this.prisma.education.findFirst({
       where : {
