@@ -285,7 +285,6 @@ export class ProfileService {
     }
   }
 
-  // src/profile/profile.service.ts - Update getSchools method
   async getSchools(query?: {
     province?: string;
     city?: string;
@@ -308,7 +307,6 @@ export class ProfileService {
         teacher_detail: true,
         educations: true,
         experiences: true,
-        skills: true,
         subjects: true,
       },
     });
@@ -317,36 +315,21 @@ export class ProfileService {
       return {
         percentage: 0,
         completed: 0,
-        total: 10,
+        total: 10, // Total tetap 10, avatar TIDAK termasuk
         missingFields: [],
       };
     }
 
-    // PERBAIKAN 1: Tambah pengecekan profile
-    if (!user.profile) {
-      return {
-        percentage: 0,
-        completed: 0,
-        total: 10,
-        missingFields: [
-          'Nama Lengkap', 'NIP', 'Nomor Telepon', 'Sekolah', 'Alamat',
-          'Mata Pelajaran yang Diajarkan', 'Kompetensi', 'Tingkat Pendidikan',
-          'Pengalaman Mengajar', 'Riwayat Pendidikan', 'Pengalaman Kerja'
-        ],
-      };
-    }
-
-    // PERBAIKAN 2: Logika pengecekan yang benar
+    // FIX: JANGAN hitung avatar sebagai field wajib
     const checks = {
-      // Profile fields (5)
-      name: !!user.profile.name?.trim(),
-      nip: !!user.profile.nip?.trim(),
-      phone: !!user.profile.phone?.trim(),
-      school: !!user.profile.schoolId,
-      address: !!user.profile.address?.trim(),
+      // Profile fields (5) - avatar TIDAK DIMASUKKAN
+      name: !!user.profile?.name?.trim(),
+      nip: !!user.profile?.nip?.trim(),
+      phone: !!user.profile?.phone?.trim(),
+      school: !!user.profile?.schoolId,
+      address: !!user.profile?.address?.trim(),
 
-      // Teacher detail fields (5)
-      // PERBAIKAN 3: Cek subject dari BOTH subjects table dan teacher_detail
+      // Teacher detail fields (4)
       subjectTaught: (user.subjects?.length > 0) || !!user.teacher_detail?.subjectTaught?.trim(),
       competencies: !!user.teacher_detail?.competencies?.trim(),
       educationLevel: !!user.teacher_detail?.educationLevel?.trim(),
@@ -357,25 +340,33 @@ export class ProfileService {
       experience: user.experiences?.length > 0,
     };
 
-    // PERBAIKAN 4: Total fields HARUS 10, hitung dengan benar
+    // DEBUG: Log untuk melihat apa yang dihitung
+    console.log('DEBUG Completion Check:', {
+      userId,
+      checks,
+      avatarExists: !!user.profile?.avatarUrl, // Hanya untuk debug
+      totalFields: 10
+    });
+
+    // Total fields HARUS 10 (tanpa avatar)
     const totalFields = 10;
 
-    // PERBAIKAN 5: Hitung completed dengan benar
-    let completionScore = 0;
-    const fieldValues = Object.values(checks);
+    let completedCount = 0;
+    const checkValues = Object.values(checks);
 
-    for (const value of fieldValues) {
-      if (value) completionScore++;
+    for (const value of checkValues) {
+      if (value) completedCount++;
     }
 
-    // PERBAIKAN 6: Pastikan tidak melebihi total
-    if (completionScore > totalFields) {
-      completionScore = totalFields;
+    // PASTIKAN completed tidak lebih dari total
+    if (completedCount > totalFields) {
+      console.warn('WARNING: completedCount > totalFields:', { completedCount, totalFields });
+      completedCount = totalFields;
     }
 
-    const completionPercentage = Math.round((completionScore / totalFields) * 100);
+    const percentage = Math.round((completedCount / totalFields) * 100);
 
-    // PERBAIKAN 7: Missing fields yang akurat
+    // FIX: Missing fields yang benar
     const missingFields: string[] = [];
 
     if (!checks.name) missingFields.push('Nama Lengkap');
@@ -390,17 +381,14 @@ export class ProfileService {
     if (!checks.education) missingFields.push('Riwayat Pendidikan');
     if (!checks.experience) missingFields.push('Pengalaman Kerja');
 
-    // PERBAIKAN 8: Remove duplicates dan batasi
-    const uniqueMissingFields = Array.from(new Set(missingFields));
-
     return {
-      percentage: completionPercentage,
-      completed: completionScore,
+      percentage,
+      completed: completedCount,
       total: totalFields,
-      missingFields: uniqueMissingFields,
+      missingFields,
     };
   }
-
+  
   async addEducation(userId: string, dto: CreateEducationDto) {
     const existing = await this.prisma.education.findFirst({
       where : {
