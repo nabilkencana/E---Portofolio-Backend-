@@ -225,7 +225,6 @@ export class ProfileService {
           data: {
             userId,
             avatarUrl,
-            email: user.email,
           },
         });
       }
@@ -313,7 +312,20 @@ export class ProfileService {
       },
     });
 
-    if (!user) {
+    console.log('DEBUG - User Data:', {
+      profileExists: !!user?.profile,
+      profileData: user?.profile ? {
+        name: user.profile.name,
+        nip: user.profile.nip,
+        phone: user.profile.phone,
+        schoolId: user.profile.schoolId,
+        address: user.profile.address,
+        email: user.profile.email, // PERHATIKAN INI!
+        avatarUrl: user.profile.avatarUrl ? 'YES' : 'NO',
+      } : 'NO PROFILE'
+    });
+
+    if (!user || !user.profile) {
       return {
         percentage: 0,
         completed: 0,
@@ -322,14 +334,14 @@ export class ProfileService {
       };
     }
 
-    // PERBAIKAN: Gunakan 10 field WAJIB saja (hapus 1 yang opsional)
+    // PERBAIKAN: Hanya hitung 10 field WAJIB, email TIDAK dihitung!
     const checks = {
-      // Profile fields (5)
+      // Profile fields (5) - email TIDAK DIMASUKKAN!
       name: !!user.profile?.name?.trim(),
       nip: !!user.profile?.nip?.trim(),
       phone: !!user.profile?.phone?.trim(),
       school: !!user.profile?.schoolId,
-      // address: !!user.profile?.address?.trim(), // HAPUS - address opsional
+      address: !!user.profile?.address?.trim(), // tetap 10 dengan address
 
       // Teacher detail fields (4)
       subjectTaught: (user.subjects?.length > 0) || !!user.teacher_detail?.subjectTaught?.trim(),
@@ -340,52 +352,70 @@ export class ProfileService {
       // Education & Experience (2)
       education: user.educations?.length > 0,
       experience: user.experiences?.length > 0,
+
+      // DEBUG fields (jangan dihitung)
+      _email: !!user.profile?.email?.trim(), // Hanya untuk debug
+      _avatar: !!user.profile?.avatarUrl, // Hanya untuk debug
     };
 
-    // DEBUG LOG
-    console.log('DEBUG - Checks:', {
-      userId,
-      checks,
-      avatarExists: !!user.profile?.avatarUrl,
-      addressExists: !!user.profile?.address?.trim(),
-      totalChecks: Object.keys(checks).length
-    });
+    console.log('DEBUG - All Checks:', checks);
 
-    // PERBAIKAN: Total fields harus sama dengan jumlah checks
-    const totalFields = Object.keys(checks).length; // Ini akan menjadi 10
+    // HITUNG HANYA 10 FIELD WAJIB
+    const mandatoryChecks = {
+      name: checks.name,
+      nip: checks.nip,
+      phone: checks.phone,
+      school: checks.school,
+      address: checks.address,
+      subjectTaught: checks.subjectTaught,
+      competencies: checks.competencies,
+      educationLevel: checks.educationLevel,
+      experienceYears: checks.experienceYears,
+      education: checks.education,
+      experience: checks.experience,
+    };
 
-    let completedCount = 0;
-    const checkValues = Object.values(checks);
-
-    for (const value of checkValues) {
-      if (value) completedCount++;
-    }
+    const mandatoryFields = Object.values(mandatoryChecks);
+    const completedCount = mandatoryFields.filter(Boolean).length;
+    const totalFields = 10; // 10 field wajib
 
     console.log('DEBUG - Calculation:', {
+      mandatoryFieldsCount: mandatoryFields.length,
       completedCount,
       totalFields,
-      percentage: Math.round((completedCount / totalFields) * 100)
+      wouldBePercentage: Math.round((completedCount / totalFields) * 100)
     });
 
-    const percentage = Math.round((completedCount / totalFields) * 100);
+    // FINAL FIX: PASTIKAN tidak lebih dari 100%
+    let finalPercentage = Math.round((completedCount / totalFields) * 100);
+    if (finalPercentage > 100) {
+      console.warn(`FIXING: percentage ${finalPercentage}% -> 100%`);
+      finalPercentage = 100;
+    }
 
-    // PERBAIKAN: Missing fields sesuai checks
     const missingFields: string[] = [];
+    const fieldLabels = {
+      name: 'Nama Lengkap',
+      nip: 'NIP',
+      phone: 'Nomor Telepon',
+      school: 'Sekolah',
+      address: 'Alamat',
+      subjectTaught: 'Mata Pelajaran yang Diajarkan',
+      competencies: 'Kompetensi',
+      educationLevel: 'Tingkat Pendidikan',
+      experienceYears: 'Pengalaman Mengajar',
+      education: 'Riwayat Pendidikan',
+      experience: 'Pengalaman Kerja',
+    };
 
-    if (!checks.name) missingFields.push('Nama Lengkap');
-    if (!checks.nip) missingFields.push('NIP');
-    if (!checks.phone) missingFields.push('Nomor Telepon');
-    if (!checks.school) missingFields.push('Sekolah');
-    // if (!checks.address) missingFields.push('Alamat'); // HAPUS
-    if (!checks.subjectTaught) missingFields.push('Mata Pelajaran yang Diajarkan');
-    if (!checks.competencies) missingFields.push('Kompetensi');
-    if (!checks.educationLevel) missingFields.push('Tingkat Pendidikan');
-    if (!checks.experienceYears) missingFields.push('Pengalaman Mengajar');
-    if (!checks.education) missingFields.push('Riwayat Pendidikan');
-    if (!checks.experience) missingFields.push('Pengalaman Kerja');
+    Object.entries(mandatoryChecks).forEach(([key, value]) => {
+      if (!value && fieldLabels[key]) {
+        missingFields.push(fieldLabels[key]);
+      }
+    });
 
     console.log('DEBUG - Final Result:', {
-      percentage,
+      percentage: finalPercentage,
       completed: completedCount,
       total: totalFields,
       missingFields
@@ -393,7 +423,7 @@ export class ProfileService {
     console.log('=== DEBUG PROFILE COMPLETION END ===\n');
 
     return {
-      percentage,
+      percentage: finalPercentage,
       completed: completedCount,
       total: totalFields,
       missingFields,
