@@ -321,6 +321,11 @@ export class ProfileService {
       };
     }
 
+    // FIX: Cek subject dari BOTH sources
+    const hasSubjects = user.subjects?.length > 0;
+    const hasTeacherDetailSubject = !!user.teacher_detail?.subjectTaught?.trim();
+    const subjectTaught = hasSubjects || hasTeacherDetailSubject;
+
     // FIX: HANYA 10 FIELD WAJIB - HAPUS SALAH SATU
     // Pilihan: hapus 'address' karena opsional
     const mandatoryChecks = {
@@ -331,8 +336,8 @@ export class ProfileService {
       school: !!user.profile?.schoolId,
       // address: !!user.profile?.address?.trim(), // HAPUS - OPSIONAL
 
-      // Teacher detail fields (4)
-      subjectTaught: (user.subjects?.length > 0) || !!user.teacher_detail?.subjectTaught?.trim(),
+      // Teacher detail fields (5) - subjectTaught dari subjects table
+      subjectTaught: subjectTaught, // ← INI YANG DIPERBAIKI
       competencies: !!user.teacher_detail?.competencies?.trim(),
       educationLevel: !!user.teacher_detail?.educationLevel?.trim(),
       experienceYears: user.teacher_detail?.yearsOfExperience != null,
@@ -496,50 +501,108 @@ export class ProfileService {
   }
 
   async syncSubjectTaught(userId: string) {
-    const subjects = await this.prisma.subject.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    try {
+      console.log(`🔄 Syncing subjects for user ${userId}`);
 
-    if (subjects.length > 0) {
-      const subjectNames = subjects.map(s => s.name).join(', ');
-
-      await this.prisma.teacherDetail.upsert({
+      const subjects = await this.prisma.subject.findMany({
         where: { userId },
-        update: { subjectTaught: subjectNames },
-        create: {
-          userId,
-          subjectTaught: subjectNames,
-        },
+        orderBy: { createdAt: 'desc' },
       });
+
+      console.log(`Found ${subjects.length} subjects:`, subjects);
+
+      if (subjects.length > 0) {
+        const subjectNames = subjects.map(s => s.name).join(', ');
+        console.log(`Merged subject names: "${subjectNames}"`);
+
+        // Update atau create teacher_detail
+        const result = await this.prisma.teacherDetail.upsert({
+          where: { userId },
+          update: {
+            subjectTaught: subjectNames,
+            updatedAt: new Date()
+          },
+          create: {
+            userId,
+            subjectTaught: subjectNames,
+          },
+        });
+
+        console.log('✅ Teacher detail updated:', result);
+        return result;
+      } else {
+        console.log('⚠️ No subjects found, clearing subjectTaught');
+
+        // Jika tidak ada subjects, hapus subjectTaught
+        await this.prisma.teacherDetail.update({
+          where: { userId },
+          data: {
+            subjectTaught: null,
+            updatedAt: new Date()
+          },
+        });
+
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error syncing subjectTaught:', error);
+      throw error;
     }
   }
 
-  // Di addSubject method, tambahkan:
+  // Di addSubject method:
   async addSubject(userId: string, dto: CreateSubjectDto) {
     const existing = await this.prisma.subject.findFirst({
-      where : {
+      where: {
         userId,
-        name : dto.name.trim(),
-        level : dto.level ?? null,
+        name: dto.name.trim(),
+        level: dto.level ?? null,
       }
-    })
+    });
 
     if (existing) {
-      throw new BadRequestException('Mata pelajaran sudah ada')
+      throw new BadRequestException('Mata pelajaran sudah ada');
     }
 
     const subject = await this.prisma.subject.create({
       data: {
         userId,
-        name: dto.name,
-        level: dto.level ?? null,
+        name: dto.name.trim(),
+        level: dto.level ? dto.level.trim() : null,
       },
     });
 
-    // Sync ke teacher_detail
+    console.log(`✅ Subject added: ${dto.name}`);
+
+    // 🔥 PASTIKAN sync dipanggil
     await this.syncSubjectTaught(userId);
 
     return subject;
+  }
+
+  // Di method lain yang menghapus subject:
+  async deleteSubject(userId: string, subjectId: string) {
+    // Tambahkan method ini jika belum ada
+    const subject = await this.prisma.subject.findFirst({
+      where: {
+        id: subjectId,
+        userId: userId,
+      },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found');
+    }
+
+    await this.prisma.subject.delete({
+      where: { id: subjectId },
+    });
+
+    console.log(`🗑️ Subject deleted: ${subject.name}`);
+
+    // 🔥 Sync setelah delete
+    await this.syncSubjectTaught(userId);
+
+    return { message: 'Subject deleted successfully' };
   }
 }

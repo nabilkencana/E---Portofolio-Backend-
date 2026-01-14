@@ -148,4 +148,11 @@ export class ProfileController {
     return await this.profileService.getProfileCompletion(user.id);
   }
 
+  // Di profile.controller.ts
+  @Post('subjects/sync')
+  @ApiOperation({ summary: 'Sync subjects to teacher detail' })
+  async syncSubjects(@CurrentUser() user: any) {
+    return await this.profileService.syncSubjectTaught(user.id);
+  }
+
 }
