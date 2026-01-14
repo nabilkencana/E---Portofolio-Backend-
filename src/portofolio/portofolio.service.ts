@@ -93,7 +93,9 @@ export class PortfolioService {
         },
         achievements: {
           where: {
-            validationStatus: 'APPROVED', // Hanya ambil yang sudah disetujui
+            validationStatus: {
+              in: ['APPROVED', 'REVISION'] // Ambil yang APPROVED dan REVISION
+            },
           },
           orderBy: { year: 'desc' },
         },
