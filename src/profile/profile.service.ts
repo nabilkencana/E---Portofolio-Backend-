@@ -299,7 +299,7 @@ export class ProfileService {
   }
 
   async getProfileCompletion(userId: string) {
-    console.log('=== DEBUG PROFILE COMPLETION START ===');
+    console.log('=== FIXED PROFILE COMPLETION START ===');
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -312,19 +312,6 @@ export class ProfileService {
       },
     });
 
-    console.log('DEBUG - User Data:', {
-      profileExists: !!user?.profile,
-      profileData: user?.profile ? {
-        name: user.profile.name,
-        nip: user.profile.nip,
-        phone: user.profile.phone,
-        schoolId: user.profile.schoolId,
-        address: user.profile.address,
-        email: user.profile.email, // PERHATIKAN INI!
-        avatarUrl: user.profile.avatarUrl ? 'YES' : 'NO',
-      } : 'NO PROFILE'
-    });
-
     if (!user || !user.profile) {
       return {
         percentage: 0,
@@ -334,14 +321,15 @@ export class ProfileService {
       };
     }
 
-    // PERBAIKAN: Hanya hitung 10 field WAJIB, email TIDAK dihitung!
-    const checks = {
-      // Profile fields (5) - email TIDAK DIMASUKKAN!
+    // FIX: HANYA 10 FIELD WAJIB - HAPUS SALAH SATU
+    // Pilihan: hapus 'address' karena opsional
+    const mandatoryChecks = {
+      // Profile fields (4 - tanpa address)
       name: !!user.profile?.name?.trim(),
       nip: !!user.profile?.nip?.trim(),
       phone: !!user.profile?.phone?.trim(),
       school: !!user.profile?.schoolId,
-      address: !!user.profile?.address?.trim(), // tetap 10 dengan address
+      // address: !!user.profile?.address?.trim(), // HAPUS - OPSIONAL
 
       // Teacher detail fields (4)
       subjectTaught: (user.subjects?.length > 0) || !!user.teacher_detail?.subjectTaught?.trim(),
@@ -352,78 +340,44 @@ export class ProfileService {
       // Education & Experience (2)
       education: user.educations?.length > 0,
       experience: user.experiences?.length > 0,
-
-      // DEBUG fields (jangan dihitung)
-      _email: !!user.profile?.email?.trim(), // Hanya untuk debug
-      _avatar: !!user.profile?.avatarUrl, // Hanya untuk debug
     };
 
-    console.log('DEBUG - All Checks:', checks);
-
-    // HITUNG HANYA 10 FIELD WAJIB
-    const mandatoryChecks = {
-      name: checks.name,
-      nip: checks.nip,
-      phone: checks.phone,
-      school: checks.school,
-      address: checks.address,
-      subjectTaught: checks.subjectTaught,
-      competencies: checks.competencies,
-      educationLevel: checks.educationLevel,
-      experienceYears: checks.experienceYears,
-      education: checks.education,
-      experience: checks.experience,
-    };
-
-    const mandatoryFields = Object.values(mandatoryChecks);
-    const completedCount = mandatoryFields.filter(Boolean).length;
-    const totalFields = 10; // 10 field wajib
-
-    console.log('DEBUG - Calculation:', {
-      mandatoryFieldsCount: mandatoryFields.length,
-      completedCount,
-      totalFields,
-      wouldBePercentage: Math.round((completedCount / totalFields) * 100)
+    console.log('FIXED - Mandatory Checks (10 fields):', mandatoryChecks);
+    console.log('FIXED - Field counts:', {
+      totalFields: Object.keys(mandatoryChecks).length,
+      completedFields: Object.values(mandatoryChecks).filter(Boolean).length
     });
 
-    // FINAL FIX: PASTIKAN tidak lebih dari 100%
-    let finalPercentage = Math.round((completedCount / totalFields) * 100);
-    if (finalPercentage > 100) {
-      console.warn(`FIXING: percentage ${finalPercentage}% -> 100%`);
-      finalPercentage = 100;
-    }
+    const completedCount = Object.values(mandatoryChecks).filter(Boolean).length;
+    const totalFields = Object.keys(mandatoryChecks).length; // Ini akan 10
 
+    const percentage = Math.round((completedCount / totalFields) * 100);
+
+    // FIX: Missing fields berdasarkan 10 field
     const missingFields: string[] = [];
-    const fieldLabels = {
-      name: 'Nama Lengkap',
-      nip: 'NIP',
-      phone: 'Nomor Telepon',
-      school: 'Sekolah',
-      address: 'Alamat',
-      subjectTaught: 'Mata Pelajaran yang Diajarkan',
-      competencies: 'Kompetensi',
-      educationLevel: 'Tingkat Pendidikan',
-      experienceYears: 'Pengalaman Mengajar',
-      education: 'Riwayat Pendidikan',
-      experience: 'Pengalaman Kerja',
-    };
 
-    Object.entries(mandatoryChecks).forEach(([key, value]) => {
-      if (!value && fieldLabels[key]) {
-        missingFields.push(fieldLabels[key]);
-      }
-    });
+    if (!mandatoryChecks.name) missingFields.push('Nama Lengkap');
+    if (!mandatoryChecks.nip) missingFields.push('NIP');
+    if (!mandatoryChecks.phone) missingFields.push('Nomor Telepon');
+    if (!mandatoryChecks.school) missingFields.push('Sekolah');
+    // if (!mandatoryChecks.address) missingFields.push('Alamat'); // HAPUS
+    if (!mandatoryChecks.subjectTaught) missingFields.push('Mata Pelajaran yang Diajarkan');
+    if (!mandatoryChecks.competencies) missingFields.push('Kompetensi');
+    if (!mandatoryChecks.educationLevel) missingFields.push('Tingkat Pendidikan');
+    if (!mandatoryChecks.experienceYears) missingFields.push('Pengalaman Mengajar');
+    if (!mandatoryChecks.education) missingFields.push('Riwayat Pendidikan');
+    if (!mandatoryChecks.experience) missingFields.push('Pengalaman Kerja');
 
-    console.log('DEBUG - Final Result:', {
-      percentage: finalPercentage,
+    console.log('FIXED - Final Result:', {
+      percentage,
       completed: completedCount,
       total: totalFields,
       missingFields
     });
-    console.log('=== DEBUG PROFILE COMPLETION END ===\n');
+    console.log('=== FIXED PROFILE COMPLETION END ===\n');
 
     return {
-      percentage: finalPercentage,
+      percentage,
       completed: completedCount,
       total: totalFields,
       missingFields,
