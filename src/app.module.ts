@@ -14,6 +14,7 @@ import { SchoolService } from './school/school.service';
 import { SchoolController } from './school/school.controller';
 import { SchoolModule } from './school/school.module';
 import { AchievementsModule } from './achievement/achievement.module';
+import { PortofolioModule } from './portofolio/portofolio.module';
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { AchievementsModule } from './achievement/achievement.module';
     ProfileModule,
     CloudinaryModule,
     SchoolModule,
-    AchievementsModule
+    AchievementsModule,
+    PortofolioModule
   ],
   controllers: [AppController, SchoolController], // Tambahkan ini
   providers: [
