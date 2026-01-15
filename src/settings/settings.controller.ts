@@ -28,6 +28,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { AvatarUploadDto } from './dto/avatar-upload.dto';
+import { memoryStorage } from 'multer';
 
 @ApiTags('Settings')
 @Controller('settings')
@@ -95,16 +96,19 @@ export class SettingsController {
   }
 
   @Put('avatar')
-  @ApiOperation({ summary: 'Upload profile avatar' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({ type: AvatarUploadDto })
-  @UseInterceptors(FileInterceptor('avatar'))
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      limits: { fileSize: 2 * 1024 * 1024 },
+      storage: memoryStorage(),
+    }),
+  )
   async uploadAvatar(
     @CurrentUser() user: any,
     @UploadedFile() avatar: Express.Multer.File,
   ) {
-    return await this.settingsService.uploadAvatar(user.id, avatar);
+    return this.settingsService.uploadAvatar(user.id, avatar);
   }
+
 
   @Delete('avatar')
   @ApiOperation({ summary: 'Delete profile avatar' })

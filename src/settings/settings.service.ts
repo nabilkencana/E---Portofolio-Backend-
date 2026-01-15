@@ -208,12 +208,11 @@ export class SettingsService {
 
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {
-    // Validate file
     if (!file?.mimetype?.startsWith('image/')) {
       throw new BadRequestException('Hanya file gambar yang diizinkan');
     }
 
-    if (file.size > 2 * 1024 * 1024) { // 2MB
+    if (file.size > 2 * 1024 * 1024) {
       throw new BadRequestException('Ukuran gambar maksimal 2MB');
     }
 
@@ -222,31 +221,28 @@ export class SettingsService {
       include: { profile: true },
     });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    if (!user) throw new NotFoundException('User not found');
 
     try {
-      // Upload to Cloudinary
-      const uploadResult = await this.cloudinary.uploadAvatar(
-        file,
-        'e-portofolio/avatars',
-      );
+      const uploadResult = await Promise.race([
+        this.cloudinary.uploadAvatar(file, 'e-portofolio/avatars'),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Cloudinary timeout')), 20000)
+        ),
+      ]) as { secure_url: string };
 
       const avatarUrl = uploadResult.secure_url;
 
-      // Delete old avatar if exists
       if (user.profile?.avatarUrl) {
-        try {
-          const oldUrlParts = user.profile.avatarUrl.split('/');
-          const oldPublicId = oldUrlParts.slice(-2).join('/').split('.')[0];
-          await this.cloudinary.deleteFile(oldPublicId);
-        } catch (error) {
-          console.error('Failed to delete old avatar:', error);
-        }
+        const oldPublicId = user.profile.avatarUrl
+          .split('/')
+          .slice(-2)
+          .join('/')
+          .split('.')[0];
+
+        await this.cloudinary.deleteFile(oldPublicId);
       }
 
-      // Update database
       if (user.profile) {
         await this.prisma.profile.update({
           where: { userId },
@@ -254,11 +250,7 @@ export class SettingsService {
         });
       } else {
         await this.prisma.profile.create({
-          data: {
-            userId,
-            email: user.email,
-            avatarUrl,
-          },
+          data: { userId, email: user.email, avatarUrl },
         });
       }
 
@@ -268,9 +260,10 @@ export class SettingsService {
       };
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      throw new BadRequestException('Gagal mengunggah foto profil');
+      throw new BadRequestException(error.message || 'Gagal upload avatar');
     }
   }
+
 
   async deleteAvatar(userId: string) {
     const user = await this.prisma.user.findUnique({
