@@ -4,7 +4,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import PDFDocument from 'pdfkit';
 type PDFDocumentType = typeof PDFDocument.prototype;
 import { Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface PortfolioData {
   user: {
@@ -68,11 +68,14 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!; // ser
 
 @Injectable()
 export class PortfolioService {
+  private supabase: SupabaseClient;
+
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
-    private supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY),
-  ) { }
+  ) { 
+    this.supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
 
   async getPortfolioData(userId: string): Promise<PortfolioData> {
     try {
