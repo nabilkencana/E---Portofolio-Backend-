@@ -180,20 +180,15 @@ export class SettingsService {
       throw new BadRequestException('Password minimal 6 karakter');
     }
 
-    // Update password using Supabase Auth
     try {
       const client = this.supabase.getClient();
       if (!client) {
         throw new BadRequestException('Supabase client not initialized');
       }
 
-      const { data, error } = await client.auth.updateUser({
+      await client.auth.admin.updateUserById(userId, {
         password: dto.newPassword,
       });
-
-      if (error) {
-        throw new BadRequestException(error.message);
-      }
 
       return { message: 'Password berhasil diperbarui' };
     } catch (error) {
@@ -201,6 +196,7 @@ export class SettingsService {
       throw new BadRequestException('Gagal memperbarui password');
     }
   }
+
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {
     // Validate file
