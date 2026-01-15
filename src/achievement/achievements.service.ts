@@ -77,16 +77,22 @@ export class AchievementsService {
     page: number = 1,
     limit: number = 10,
     type?: string,
+    status?: string,
   ) {
     const skip = (page - 1) * limit;
 
     // Build where clause
     const where: any = { userId };
+
     if (type) {
       where.type = type;
     }
 
-    this.logger.log(`Fetching achievements for user ${userId}, type: ${type}`);
+    if (status) {
+      where.validationStatus = status;
+    }
+
+    this.logger.log(`Fetching achievements for user ${userId}, type: ${type}, status: ${status}`);
 
     const [achievements, total] = await Promise.all([
       this.prisma.achievement.findMany({
@@ -114,6 +120,93 @@ export class AchievementsService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async search(
+    userId: string,
+    query: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    const skip = (page - 1) * limit;
+
+    this.logger.log(`Searching achievements for user ${userId}, query: "${query}"`);
+
+    // Build search conditions
+    const where: any = {
+      userId,
+      OR: [
+        {
+          title: {
+            contains: query,
+            mode: 'insensitive' as any,
+          },
+        },
+        {
+          description: {
+            contains: query,
+            mode: 'insensitive' as any,
+          },
+        },
+        {
+          type: {
+            contains: query,
+            mode: 'insensitive' as any,
+          },
+        },
+        {
+          level: {
+            contains: query,
+            mode: 'insensitive' as any,
+          },
+        },
+        {
+          year: {
+            equals: isNaN(Number(query)) ? undefined : Number(query),
+          },
+        },
+      ],
+    };
+
+    // Filter out undefined conditions
+    const conditions = where.OR.filter((condition: any) => {
+      if (condition.year && condition.year.equals === undefined) {
+        return false;
+      }
+      return true;
+    });
+
+    where.OR = conditions.length > 0 ? conditions : undefined;
+
+    const [achievements, total] = await Promise.all([
+      this.prisma.achievement.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.achievement.count({ where }),
+    ]);
+
+    return {
+      data: achievements,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        query,
       },
     };
   }

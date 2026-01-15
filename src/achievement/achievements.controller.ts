@@ -15,7 +15,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiConsumes, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AchievementsService } from './achievements.service';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
@@ -45,12 +45,32 @@ export class AchievementsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all achievements for current user' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiQuery({ name: 'type', required: false, type: String, description: 'Filter by type (PRESTASI/SERTIFIKAT)' })
+  @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status (PENDING/APPROVED/REJECTED/REVISION)' })
   findAll(
     @CurrentUser() user: any,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+    @Query('type') type?: string,
+    @Query('status') status?: string,
   ) {
-    return this.achievementsService.findAll(user.id, page, limit);
+    return this.achievementsService.findAll(user.id, page, limit, type, status);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search achievements by keyword' })
+  @ApiQuery({ name: 'q', required: true, type: String, description: 'Search query' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  search(
+    @CurrentUser() user: any,
+    @Query('q') query: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+  ) {
+    return this.achievementsService.search(user.id, query, page, limit);
   }
 
   @Get(':id')
