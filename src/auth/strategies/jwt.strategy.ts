@@ -14,27 +14,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             secretOrKey: config.get('JWT_SECRET'),
             ignoreExpiration: false,
-            // Supabase JWT khusus - perlu verifikasi audience
-            audience: config.get('SUPABASE_JWT_AUDIENCE'),
-            issuer: config.get('SUPABASE_JWT_ISSUER'),
+
+            // ⚠️ Jangan paksa audience & issuer dulu
+            // Supabase token kadang beda environment
+            // audience: config.get('SUPABASE_JWT_AUDIENCE'),
+            // issuer: config.get('SUPABASE_JWT_ISSUER'),
         });
     }
 
     async validate(payload: any) {
-        console.log('JWT Payload from Supabase:', payload);
-
-        // Supabase payload format:
-        // {
-        //   "sub": "user-uuid",
-        //   "email": "user@example.com",
-        //   "phone": "",
-        //   "app_metadata": { provider: "email", providers: ["email"] },
-        //   "user_metadata": {},
-        //   "role": "authenticated",
-        //   "aud": "authenticated",
-        //   "exp": 1234567890,
-        //   "iss": "https://your-project.supabase.co/auth/v1"
-        // }
+        console.log('JWT Payload:', payload);
 
         const userId = payload.sub;
 
@@ -42,7 +31,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             throw new UnauthorizedException('Invalid token: no user ID');
         }
 
-        // Cek user di database lokal
         let user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -56,16 +44,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             },
         });
 
-        // Jika user belum ada di database, buat entry baru
+        // Jika user belum ada → buat otomatis
         if (!user) {
-            console.log('User not found in database, creating new user...');
+            console.log('User not found, creating from Supabase...');
+
             user = await this.prisma.user.create({
                 data: {
                     id: userId,
                     email: payload.email || '',
                     name: payload.user_metadata?.name || '',
-                    password: 'supabase-auth', // Password dummy untuk Supabase auth
-                    emailVerified: payload.email_confirmed_at ? true : false,
+                    password: 'supabase-auth',
+                    emailVerified: !!payload.email_confirmed_at,
                 },
                 select: {
                     id: true,
@@ -79,7 +68,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             });
         }
 
-        // Tambahkan metadata dari Supabase
         return {
             ...user,
             supabaseMetadata: {
@@ -88,7 +76,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
                 role: payload.role,
                 aud: payload.aud,
                 iss: payload.iss,
-            }
+            },
         };
     }
 }
