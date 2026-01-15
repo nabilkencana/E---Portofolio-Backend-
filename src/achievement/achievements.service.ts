@@ -4,6 +4,7 @@ import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Achievement, Status } from '@prisma/client';
+import { NotificationsService } from '../notification/notification.service'; // Pastikan path benar
 
 @Injectable()
 export class AchievementsService {
@@ -12,6 +13,7 @@ export class AchievementsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly notificationsService: NotificationsService,
   ) { }
 
   async create(
@@ -56,7 +58,7 @@ export class AchievementsService {
         level: createAchievementDto.level || null,
         year: createAchievementDto.year || null,
         validationStatus: 'PENDING', // Default status
-        ...fileData, // Spread hanya jika ada data
+        ...fileData,
       },
       include: {
         user: {
@@ -68,6 +70,64 @@ export class AchievementsService {
         },
       },
     });
+
+    // Create notification for user
+    try {
+      await this.notificationsService.create(userId, {
+        title: 'Prestasi Berhasil Ditambahkan',
+        message: `Prestasi "${achievement.title}" telah berhasil ditambahkan dan sedang menunggu validasi.`,
+        type: 'ACHIEVEMENT',
+        relatedId: achievement.id,
+        relatedType: 'achievement',
+        link: `/achievements/${achievement.id}`,
+        metadata: {
+          achievementId: achievement.id,
+          achievementTitle: achievement.title,
+          status: achievement.validationStatus,
+          submittedAt: new Date().toISOString(),
+        },
+      });
+    } catch (notificationError) {
+      this.logger.error('Failed to create achievement submission notification:', notificationError);
+      // Jangan throw error jika notifikasi gagal
+    }
+
+    // Create notification for admin about new achievement submission
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true },
+      });
+
+      // Cari semua admin
+      const admins = await this.prisma.user.findMany({
+        where: {
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+        },
+        select: { id: true },
+      });
+
+      // Buat notifikasi untuk setiap admin
+      for (const admin of admins) {
+        await this.notificationsService.create(admin.id, {
+          title: 'Prestasi Baru Menunggu Validasi',
+          message: `${user?.name || user?.email || 'User'} telah mengajukan prestasi baru: "${achievement.title}"`,
+          type: 'VALIDATION',
+          relatedId: achievement.id,
+          relatedType: 'achievement',
+          link: `/admin/achievements/${achievement.id}`,
+          metadata: {
+            achievementId: achievement.id,
+            achievementTitle: achievement.title,
+            submittedBy: user?.name || user?.email || 'User',
+            submittedByUserId: userId,
+            submittedAt: new Date().toISOString(),
+          },
+        });
+      }
+    } catch (adminNotificationError) {
+      this.logger.error('Failed to create admin notification:', adminNotificationError);
+    }
 
     return achievement;
   }
@@ -81,7 +141,6 @@ export class AchievementsService {
   ) {
     const skip = (page - 1) * limit;
 
-    // Build where clause
     const where: any = { userId };
 
     if (type) {
@@ -134,7 +193,6 @@ export class AchievementsService {
 
     this.logger.log(`Searching achievements for user ${userId}, query: "${query}"`);
 
-    // Build search conditions
     const where: any = {
       userId,
       OR: [
@@ -234,7 +292,6 @@ export class AchievementsService {
         throw new NotFoundException('Achievement not found');
       }
 
-      // Check ownership (kecuali admin)
       if (achievement.userId !== userId) {
         this.logger.warn(`User ${userId} tried to access achievement ${id} owned by ${achievement.userId}`);
         throw new ForbiddenException('You do not have permission to access this achievement');
@@ -302,7 +359,6 @@ export class AchievementsService {
 
       const resourceType = this.cloudinaryService.getResourceType(file.mimetype);
 
-      // Tambahkan file data ke updateData
       updateData.proofFilePath = uploadResult.secure_url;
       updateData.proofPublicId = uploadResult.public_id;
       updateData.fileSize = uploadResult.bytes;
@@ -326,6 +382,52 @@ export class AchievementsService {
       },
     });
 
+    // Create notification jika status validasi berubah
+    if (updateAchievementDto.validationStatus &&
+      updateAchievementDto.validationStatus !== existing.validationStatus) {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true },
+        });
+
+        let message = '';
+        switch (updateAchievementDto.validationStatus) {
+          case 'APPROVED':
+            message = `Prestasi "${updated.title}" telah disetujui${user?.name ? ` oleh ${user.name}` : ''}.`;
+            break;
+          case 'REJECTED':
+            message = `Prestasi "${updated.title}" ditolak. Silakan cek catatan revisi.`;
+            break;
+          case 'REVISION':
+            message = `Prestasi "${updated.title}" memerlukan revisi. Silakan perbaiki sesuai catatan.`;
+            break;
+          default:
+            message = `Prestasi "${updated.title}" telah diupdate.`;
+        }
+
+        await this.notificationsService.create(existing.userId, {
+          title: `Update Status Prestasi: ${updateAchievementDto.validationStatus}`,
+          message,
+          type: updateAchievementDto.validationStatus === 'APPROVED' ? 'ACHIEVEMENT' :
+            updateAchievementDto.validationStatus === 'REJECTED' ? 'ALERT' : 'VALIDATION',
+          relatedId: id,
+          relatedType: 'achievement',
+          link: `/achievements/${id}`,
+          metadata: {
+            achievementId: id,
+            achievementTitle: updated.title,
+            status: updateAchievementDto.validationStatus,
+            validatedBy: user?.name,
+            validatedAt: new Date().toISOString(),
+            rejectionNotes: updateAchievementDto.rejectionNotes,
+          },
+        });
+      } catch (notificationError) {
+        this.logger.error('Failed to create validation notification:', notificationError);
+      }
+    }
+
     return updated;
   }
 
@@ -345,7 +447,6 @@ export class AchievementsService {
 
     // Hapus file dari Cloudinary jika ada
     if (existing.proofPublicId) {
-      // Gunakan resource type yang disimpan atau deteksi dari fileType
       const resourceType = existing.resourceType ||
         (existing.fileType?.includes('pdf') ? 'raw' : 'image');
 
@@ -359,6 +460,23 @@ export class AchievementsService {
     await this.prisma.achievement.delete({
       where: { id },
     });
+
+    // Create notification
+    try {
+      await this.notificationsService.create(userId, {
+        title: 'Prestasi Dihapus',
+        message: `Prestasi "${existing.title}" telah berhasil dihapus.`,
+        type: 'SYSTEM',
+        relatedType: 'achievement',
+        metadata: {
+          achievementId: id,
+          achievementTitle: existing.title,
+          deletedAt: new Date().toISOString(),
+        },
+      });
+    } catch (notificationError) {
+      this.logger.error('Failed to create deletion notification:', notificationError);
+    }
 
     return { message: 'Achievement deleted successfully' };
   }
@@ -380,14 +498,12 @@ export class AchievementsService {
       throw new NotFoundException('File not found');
     }
 
-    // Tentukan resource type
     const resourceType = achievement.resourceType ||
       (achievement.fileType?.includes('pdf') ? 'raw' : 'image');
 
-    // Generate signed URL untuk download (valid 1 jam)
     const signedUrl = await this.cloudinaryService.generateSignedUrl(
       achievement.proofPublicId,
-      3600, // 1 jam
+      3600,
       {
         resource_type: resourceType as any,
         attachment: true,
@@ -397,7 +513,7 @@ export class AchievementsService {
 
     return {
       signedUrl,
-      expiresAt: new Date(Date.now() + 3600 * 1000), // 1 jam dari sekarang
+      expiresAt: new Date(Date.now() + 3600 * 1000),
       fileName: achievement.originalFileName || 'document',
       fileType: achievement.fileType,
     };
