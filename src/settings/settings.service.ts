@@ -190,13 +190,17 @@ export class SettingsService {
         password: dto.newPassword,
       });
 
+      console.log('DTO:', dto);
+      console.log('UserID:', userId);
+
       return { message: 'Password berhasil diperbarui' };
     } catch (error) {
       console.error('Error updating password:', error);
-      throw new BadRequestException('Gagal memperbarui password');
+      throw new BadRequestException(
+        error?.message || 'Gagal memperbarui password'
+      );
     }
   }
-
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {
     // Validate file
