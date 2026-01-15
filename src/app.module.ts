@@ -18,7 +18,7 @@ import { PortofolioModule } from './portofolio/portofolio.module';
 import { SettingsModule } from './settings/settings.module';
 import { SupabaseService } from './supabase/supabase.service';
 import { SupabaseModule } from './supabase/supabase.module';
-import { NotificationModule } from './notification/notification.module';
+import { NotificationsModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -42,7 +42,7 @@ import { NotificationModule } from './notification/notification.module';
     PortofolioModule,
     SettingsModule,
     SupabaseModule,
-    NotificationModule
+    NotificationsModule
   ],
   controllers: [AppController, SchoolController], // Tambahkan ini
   providers: [
