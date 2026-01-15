@@ -45,6 +45,7 @@ export class PortfolioController {
   @Get('data')
   @ApiOperation({ summary: 'Get portfolio data for frontend' })
   @ApiResponse({ status: 200, description: 'Portfolio data retrieved' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async getPortfolioData(@CurrentUser() user: any) {
     try {
       const data = await this.portfolioService.getPortfolioData(user.id);
@@ -56,7 +57,7 @@ export class PortfolioController {
       console.error('Error getting portfolio data:', error);
       return {
         success: false,
-        message: 'Failed to get portfolio data',
+        message: error.message || 'Failed to get portfolio data',
       };
     }
   }

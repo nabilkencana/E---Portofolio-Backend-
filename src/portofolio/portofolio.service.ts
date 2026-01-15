@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import PDFDocument from 'pdfkit';
 type PDFDocumentType = typeof PDFDocument.prototype;
 import { Response } from 'express';
+import { createClient } from '@supabase/supabase-js';
 
 export interface PortfolioData {
   user: {
@@ -62,106 +63,119 @@ export interface PortfolioData {
   }>;
 }
 
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!; // service role key
+
 @Injectable()
 export class PortfolioService {
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
+    private supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY),
   ) { }
 
   async getPortfolioData(userId: string): Promise<PortfolioData> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        profile: {
-          include: {
-            school: true,
-          },
-        },
-        teacher_detail: true,
-        educations: {
-          orderBy: { startYear: 'desc' },
-        },
-        experiences: {
-          orderBy: { startDate: 'desc' },
-        },
-        skills: {
-          orderBy: { name: 'asc' },
-        },
-        subjects: {
-          orderBy: { name: 'asc' },
-        },
-        achievements: {
-          where: {
-            validationStatus: {
-              in: ['APPROVED', 'REVISION'] // Ambil yang APPROVED dan REVISION
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          profile: {
+            include: {
+              school: true,
             },
           },
-          orderBy: { year: 'desc' },
+          teacher_detail: true,
+          educations: {
+            orderBy: { startYear: 'desc' },
+          },
+          experiences: {
+            orderBy: { startDate: 'desc' },
+          },
+          skills: {
+            orderBy: { name: 'asc' },
+          },
+          subjects: {
+            orderBy: { name: 'asc' },
+          },
+          achievements: {
+            where: {
+              validationStatus: {
+                in: ['APPROVED', 'REVISION'], // hanya ambil yang APPROVED & REVISION
+              },
+            },
+            orderBy: { year: 'desc' },
+          },
         },
-      },
-    });
+      });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      return {
+        user: {
+          name: user.profile?.name || user.name || '',
+          nip: user.profile?.nip || null,
+          email: user.email,
+          phone: user.profile?.phone || null,
+        },
+        profile: {
+          school: user.profile?.school
+            ? {
+              schoolName: user.profile.school.schoolName,
+              address: user.profile.school.address,
+              city: user.profile.school.city,
+              province: user.profile.school.province,
+            }
+            : null,
+          address: user.profile?.address || null,
+        },
+        teacherDetail: user.teacher_detail
+          ? {
+            subjectTaught: user.teacher_detail.subjectTaught,
+            educationLevel: user.teacher_detail.educationLevel,
+            yearsOfExperience: user.teacher_detail.yearsOfExperience,
+            competencies: user.teacher_detail.competencies,
+          }
+          : null,
+        educations: user.educations.map((edu) => ({
+          institution: edu.institution,
+          degree: edu.degree,
+          field: edu.field,
+          startYear: edu.startYear,
+          endYear: edu.endYear,
+          isCurrent: edu.isCurrent,
+        })),
+        experiences: user.experiences.map((exp) => ({
+          company: exp.company,
+          position: exp.position,
+          description: exp.description,
+          startDate: exp.startDate,
+          endDate: exp.endDate,
+          isCurrent: exp.isCurrent,
+        })),
+        skills: user.skills.map((skill) => ({
+          name: skill.name,
+          level: skill.level,
+          category: skill.category,
+        })),
+        subjects: user.subjects.map((subject) => ({
+          name: subject.name,
+          level: subject.level,
+        })),
+        achievements: user.achievements.map((ach) => ({
+          title: ach.title,
+          type: ach.type,
+          description: ach.description,
+          level: ach.level,
+          year: ach.year,
+          validationStatus: ach.validationStatus,
+        })),
+      };
+    } catch (error) {
+      Logger.error('Error in getPortfolioData', error);
+      throw error;
     }
-
-    return {
-      user: {
-        name: user.profile?.name || user.name || '',
-        nip: user.profile?.nip || null,
-        email: user.email,
-        phone: user.profile?.phone || null,
-      },
-      profile: {
-        school: user.profile?.school ? {
-          schoolName: user.profile.school.schoolName,
-          address: user.profile.school.address,
-          city: user.profile.school.city,
-          province: user.profile.school.province,
-        } : null,
-        address: user.profile?.address || null,
-      },
-      teacherDetail: user.teacher_detail ? {
-        subjectTaught: user.teacher_detail.subjectTaught,
-        educationLevel: user.teacher_detail.educationLevel,
-        yearsOfExperience: user.teacher_detail.yearsOfExperience,
-        competencies: user.teacher_detail.competencies,
-      } : null,
-      educations: user.educations.map(edu => ({
-        institution: edu.institution,
-        degree: edu.degree,
-        field: edu.field,
-        startYear: edu.startYear,
-        endYear: edu.endYear,
-        isCurrent: edu.isCurrent,
-      })),
-      experiences: user.experiences.map(exp => ({
-        company: exp.company,
-        position: exp.position,
-        description: exp.description,
-        startDate: exp.startDate,
-        endDate: exp.endDate,
-        isCurrent: exp.isCurrent,
-      })),
-      skills: user.skills.map(skill => ({
-        name: skill.name,
-        level: skill.level,
-        category: skill.category,
-      })),
-      subjects: user.subjects.map(subject => ({
-        name: subject.name,
-        level: subject.level,
-      })),
-      achievements: user.achievements.map(ach => ({
-        title: ach.title,
-        type: ach.type,
-        description: ach.description,
-        level: ach.level,
-        year: ach.year,
-        validationStatus: ach.validationStatus,
-      })),
-    };
   }
 
   async generatePDF(userId: string, res: Response): Promise<void> {
