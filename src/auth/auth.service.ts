@@ -15,6 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcryptjs';
 import { UserEntity } from './entities/user.entity';
+import { supabase } from 'src/supabase/supabase.client';
 
 @Injectable()
 export class AuthService {
@@ -27,23 +28,19 @@ export class AuthService {
   ) { }
 
   async register(dto: RegisterDto) {
-    // Check if passwords match
     if (dto.password !== dto.confirmPassword) {
       throw new BadRequestException('Password tidak cocok');
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(dto.email)) {
       throw new BadRequestException('Format email tidak valid');
     }
 
-    // Validate name
     if (!dto.name || dto.name.trim().length < 2) {
       throw new BadRequestException('Nama minimal 2 karakter');
     }
 
-    // Validate password strength
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
     if (!passwordRegex.test(dto.password)) {
       throw new BadRequestException(
@@ -52,7 +49,6 @@ export class AuthService {
     }
 
     try {
-      // Check if user already exists - with retry
       const existingUser = await this.executeWithRetry(async () => {
         return await this.prisma.user.findUnique({
           where: { email: dto.email.toLowerCase().trim() },
@@ -63,10 +59,23 @@ export class AuthService {
         throw new ConflictException('Email sudah terdaftar');
       }
 
-      // Hash password
+      // 🔑 1. BUAT USER DI SUPABASE
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: dto.email.toLowerCase().trim(),
+        password: dto.password,
+        email_confirm: true,
+      });
+
+      if (error || !data?.user) {
+        throw new BadRequestException(error?.message || 'Gagal membuat user Supabase');
+      }
+
+      const supabaseId = data.user.id; // UUID dari Supabase
+
+      // 🔐 2. HASH PASSWORD
       const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-      // Create user in transaction
+      // 🗄️ 3. SIMPAN KE DATABASE
       const user = await this.prisma.$transaction(async (tx) => {
         const newUser = await tx.user.create({
           data: {
@@ -74,22 +83,19 @@ export class AuthService {
             name: dto.name.trim(),
             password: hashedPassword,
             emailVerified: true,
+            supabaseId: supabaseId, // ✅ FIX UTAMA
           },
         });
 
-        // Create profile
         await tx.profile.create({
-          data: {
-            userId: newUser.id,
-          },
+          data: { userId: newUser.id },
         });
+
         return newUser;
       });
 
-      // Generate tokens
       const tokens = await this.generateTokens(user.id, user.email, user.role);
 
-      // Save refresh token to database
       await this.executeWithRetry(async () => {
         await this.updateRefreshToken(user.id, tokens.refreshToken);
       }, 'updateRefreshToken');
@@ -110,6 +116,7 @@ export class AuthService {
       throw new InternalServerErrorException('Gagal mendaftarkan pengguna');
     }
   }
+
 
   async login(dto: LoginDto) {
     try {
