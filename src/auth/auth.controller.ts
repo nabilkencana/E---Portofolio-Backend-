@@ -26,6 +26,47 @@ import { UserEntity } from './entities/user.entity';
 export class AuthController {
   constructor(private authService: AuthService) { }
 
+  @Get('debug')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  async debugAuth(@Req() req: any) {
+    return {
+      message: 'Auth debug successful',
+      user: req.user,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('decode-token')
+  async decodeToken(@Req() req: any) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return { error: 'No token provided' };
+    }
+
+    // Split token untuk melihat bagian-bagiannya
+    const parts = token.split('.');
+
+    try {
+      const header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+
+      return {
+        header,
+        payload,
+        signaturePresent: parts[2] ? true : false,
+        tokenLength: token.length,
+      };
+    } catch (error) {
+      return {
+        error: 'Failed to decode token',
+        message: error.message,
+        tokenPreview: token.substring(0, 50) + '...',
+      };
+    }
+  }
+
   @Post('register')
   @ApiOperation({ summary: 'Registrasi pengguna baru' })
   async register(

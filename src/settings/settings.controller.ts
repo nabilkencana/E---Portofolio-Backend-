@@ -10,6 +10,8 @@ import {
   Post,
   HttpCode,
   HttpStatus,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -36,8 +38,19 @@ export class SettingsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all user settings' })
-  async getSettings(@CurrentUser() user: any) {
-    return await this.settingsService.getUserSettings(user.id);
+  async getSettings(@Req() req: any) {
+    try {
+      console.log('Settings Controller - Request User:', req.user);
+
+      if (!req.user || !req.user.id) {
+        throw new UnauthorizedException('User not found in request');
+      }
+
+      return await this.settingsService.getUserSettings(req.user.id);
+    } catch (error) {
+      console.error('Error in getSettings:', error);
+      throw error;
+    }
   }
 
   @Get('profile')
