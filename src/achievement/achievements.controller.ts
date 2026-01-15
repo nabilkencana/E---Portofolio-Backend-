@@ -15,8 +15,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
-import { AchievementsService } from './achievement.service';
+import { ApiTags, ApiOperation, ApiConsumes, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { AchievementsService } from './achievements.service';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -55,7 +55,12 @@ export class AchievementsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get achievement by ID' })
-  findOne(@CurrentUser() user: any, @Param('id') id: string) {
+  @ApiParam({ name: 'id', type: String, description: 'Achievement ID' })
+  async findOne(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+  ) {
+    console.log('Fetching achievement:', { id, userId: user.id }); // Debug log
     return this.achievementsService.findOne(id, user.id);
   }
 

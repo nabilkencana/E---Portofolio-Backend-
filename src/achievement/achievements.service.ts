@@ -1,11 +1,14 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { Achievement, Status } from '@prisma/client';
 
 @Injectable()
 export class AchievementsService {
+  private readonly logger = new Logger(AchievementsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
@@ -69,12 +72,25 @@ export class AchievementsService {
     return achievement;
   }
 
-  async findAll(userId: string, page: number = 1, limit: number = 10) {
+  async findAll(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+    type?: string,
+  ) {
     const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = { userId };
+    if (type) {
+      where.type = type;
+    }
+
+    this.logger.log(`Fetching achievements for user ${userId}, type: ${type}`);
 
     const [achievements, total] = await Promise.all([
       this.prisma.achievement.findMany({
-        where: { userId },
+        where,
         include: {
           user: {
             select: {
@@ -88,7 +104,7 @@ export class AchievementsService {
         skip,
         take: limit,
       }),
-      this.prisma.achievement.count({ where: { userId } }),
+      this.prisma.achievement.count({ where }),
     ]);
 
     return {
@@ -102,30 +118,41 @@ export class AchievementsService {
     };
   }
 
-  async findOne(id: string, userId: string) {
-    const achievement = await this.prisma.achievement.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
+  async findOne(id: string, userId: string): Promise<Achievement> {
+    this.logger.log(`Finding achievement ${id} for user ${userId}`);
+
+    try {
+      const achievement = await this.prisma.achievement.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
           },
+          Category: true,
         },
-      },
-    });
+      });
 
-    if (!achievement) {
-      throw new NotFoundException('Achievement not found');
+      if (!achievement) {
+        this.logger.warn(`Achievement ${id} not found`);
+        throw new NotFoundException('Achievement not found');
+      }
+
+      // Check ownership (kecuali admin)
+      if (achievement.userId !== userId) {
+        this.logger.warn(`User ${userId} tried to access achievement ${id} owned by ${achievement.userId}`);
+        throw new ForbiddenException('You do not have permission to access this achievement');
+      }
+
+      this.logger.log(`Achievement ${id} found and accessible for user ${userId}`);
+      return achievement;
+    } catch (error) {
+      this.logger.error(`Error finding achievement ${id}:`, error);
+      throw error;
     }
-
-    // Check ownership (kecuali admin)
-    if (achievement.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to access this achievement');
-    }
-
-    return achievement;
   }
 
   async update(

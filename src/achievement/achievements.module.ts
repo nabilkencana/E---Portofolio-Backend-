@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AchievementsService } from './achievement.service';
-import { AchievementsController } from './achievement.controller';
+import { AchievementsService } from './achievements.service';
+import { AchievementsController } from './achievements.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 

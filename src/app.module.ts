@@ -13,8 +13,11 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { SchoolService } from './school/school.service';
 import { SchoolController } from './school/school.controller';
 import { SchoolModule } from './school/school.module';
-import { AchievementsModule } from './achievement/achievement.module';
+import { AchievementsModule } from './achievement/achievements.module';
 import { PortofolioModule } from './portofolio/portofolio.module';
+import { SettingsModule } from './settings/settings.module';
+import { SupabaseService } from './supabase/supabase.service';
+import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
   imports: [
@@ -35,7 +38,9 @@ import { PortofolioModule } from './portofolio/portofolio.module';
     CloudinaryModule,
     SchoolModule,
     AchievementsModule,
-    PortofolioModule
+    PortofolioModule,
+    SettingsModule,
+    SupabaseModule
   ],
   controllers: [AppController, SchoolController], // Tambahkan ini
   providers: [
@@ -45,6 +50,7 @@ import { PortofolioModule } from './portofolio/portofolio.module';
     },
     PrismaService,
     SchoolService,
+    SupabaseService,
   ],
 })
 export class AppModule { }
