@@ -16,80 +16,81 @@ datasource db {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
+  id              String          @id @default(cuid())
+  supabaseId      String?         @unique
+  email           String          @unique
   name            String?
   password        String
-  emailVerified   Boolean   @default(false)
+  emailVerified   Boolean         @default(false)
   refreshToken    String?
   refreshTokenExp DateTime?
-  role            UserRole  @default(USER)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  role            UserRole        @default(USER)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   //              Relations
-  profile        Profile?
-  achievements   Achievement[]
-  experiences    Experience[]
-  educations     Education[]
-  skills         Skill[]
-  subjects       Subject[]
-  teacher_detail TeacherDetail?
+  profile         Profile?
+  achievements    Achievement[]
+  experiences     Experience[]
+  educations      Education[]
+  skills          Skill[]
+  subjects        Subject[]
+  teacher_detail  TeacherDetail?
 
   @@map("users")
 }
 
 // Profile Backend
 model Profile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String?
-  nip       String?  @unique
-  email     String?
-  phone     String?
-  schoolId  String?
-  school    School?  @relation(fields: [schoolId], references: [id])
-  avatarUrl String?
-  address   String?
-  preferences Json?  @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String?
+  nip         String?   @unique
+  email       String?
+  phone       String?
+  schoolId    String?
+  school      School?  @relation(fields: [schoolId], references: [id])
+  avatarUrl   String?
+  address     String?
+  preferences Json?     @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("profiles")
 }
 
 // Update model School
 model School {
-  id            String   @id @default(cuid())
-  npsn          String?  @unique // Nomor Pokok Sekolah Nasional
-  schoolCode    String?  @unique // Kode sekolah
-  schoolName    String
+  id                                                         String     @id @default(cuid())
+  npsn                                                       String?    @unique // Nomor Pokok Sekolah Nasional
+  schoolCode                                                 String?    @unique // Kode sekolah
+  schoolName                                                 String
   schoolType    String // SD, SMP, SMA, SMK, SLB
   schoolLevel   String? // NEGERI, SWASTA
-  address       String?
+  address                                                    String?
   village       String? // Desa/Kelurahan
   subdistrict   String? // Kecamatan
   city          String? // Kota/Kabupaten
-  province      String?
-  postalCode    String?
-  phone         String?
-  email         String?
-  website       String?
+  province                                                   String?
+  postalCode                                                 String?
+  phone                                                      String?
+  email                                                      String?
+  website                                                    String?
   accreditation String? // A, B, C, atau Belum Terakreditasi
-  latitude      Float?
-  longitude     Float?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  latitude                                                   Float?
+  longitude                                                  Float?
+  createdAt                                                  DateTime   @default(now())
+  updatedAt                                                  DateTime   @updatedAt
 
-  users Profile[]
+  users                                                      Profile[]
 
   @@map("schools")
 }
 
 model TeacherDetail {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
+  id                  String    @id @default(cuid())
+  userId              String    @unique
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjectTaught       String?
   competencies        String?
@@ -98,8 +99,8 @@ model TeacherDetail {
   teachingCertificate String?
   certificationNumber String?
   specialization      String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@map("teacher_details")
 }
@@ -111,9 +112,9 @@ enum UserRole {
 }
 
 model VerificationToken {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   identifier String
-  token      String   @unique
+  token      String    @unique
   expires    DateTime
 
   @@unique([identifier, token])
@@ -121,37 +122,37 @@ model VerificationToken {
 }
 
 model Achievement {
-  id               String    @id @default(cuid())
-  userId           String
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title            String
-  type             String    @default("prestasi") // prestasi atau sertifikat
-  description      String?
+  id                                                                                           String     @id @default(cuid())
+  userId                                                                                       String
+  user                                                                                         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                                                                                        String
+  type                                                                                         String     @default("prestasi") // prestasi atau sertifikat
+  description                                                                                  String?
   level            String? // sekolah, kecamatan, kabupaten, provinsi, nasional, internasional
-  year             Int?
-  validationStatus Status    @default(PENDING)
-  rejectionNotes   String?
+  year                                                                                         Int?
+  validationStatus                                                                             Status     @default(PENDING)
+  rejectionNotes                                                                               String?
   proofFilePath    String? // URL ke Cloudinary
   proofPublicId    String? // Cloudinary public ID
   fileSize         Int? // Ukuran file dalam bytes
   fileType         String? // Mime type
   originalFileName String? // Nama file asli
   resourceType     String? // 'image', 'raw', 'video' - untuk Cloudinary resource type
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  Category         Category? @relation(fields: [categoryId], references: [id])
-  categoryId       String?
+  createdAt                                                                                    DateTime   @default(now())
+  updatedAt                                                                                    DateTime   @updatedAt
+  Category                                                                                     Category? @relation(fields: [categoryId], references: [id])
+  categoryId                                                                                   String?
 
   @@map("achievements")
 }
 
 model Category {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique
-  type      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String         @id @default(cuid())
+  name         String         @unique
+  slug         String         @unique
+  type         String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   achievements Achievement[]
 
@@ -166,7 +167,7 @@ enum Status {
 }
 
 model Experience {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   company     String
@@ -174,15 +175,15 @@ model Experience {
   description String?
   startDate   DateTime
   endDate     DateTime?
-  isCurrent   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isCurrent   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@map("experiences")
 }
 
 model Education {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   institution String
@@ -190,34 +191,34 @@ model Education {
   field       String?
   startYear   Int
   endYear     Int?
-  isCurrent   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isCurrent   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("educations")
 }
 
 model Skill {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  level     String   @default("INTERMEDIATE")
+  level     String    @default("INTERMEDIATE")
   category  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("skills")
 }
 
 model Subject {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   level     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("subjects")
 }

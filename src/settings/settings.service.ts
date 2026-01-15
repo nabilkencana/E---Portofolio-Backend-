@@ -180,18 +180,22 @@ export class SettingsService {
       throw new BadRequestException('Password minimal 6 karakter');
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user?.supabaseId) {
+      throw new BadRequestException('Supabase user ID tidak ditemukan');
+    }
+
     try {
       const client = this.supabase.getClient();
-      if (!client) {
-        throw new BadRequestException('Supabase client not initialized');
-      }
 
-      await client.auth.admin.updateUserById(userId, {
+      await client.auth.admin.updateUserById(user.supabaseId, {
         password: dto.newPassword,
       });
 
-      console.log('DTO:', dto);
-      console.log('UserID:', userId);
+      console.log('User from DB:', user);
 
       return { message: 'Password berhasil diperbarui' };
     } catch (error) {
@@ -201,6 +205,7 @@ export class SettingsService {
       );
     }
   }
+
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {
     // Validate file
