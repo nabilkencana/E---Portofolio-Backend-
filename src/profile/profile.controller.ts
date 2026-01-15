@@ -24,6 +24,7 @@ import { CreateEducationDto } from './dto/create-education.dto';
 import { CreateExperienceDto } from './dto/create-experience.dto';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { CreateSubjectDto } from './dto/create-subject.dto';
+import multer from 'multer';
 
 @ApiTags('Profile')
 @Controller('profile')
@@ -59,13 +60,18 @@ export class ProfileController {
   @Put('avatar')
   @ApiOperation({ summary: 'Upload profile avatar' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('avatar'))
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      storage: multer.memoryStorage(), // ✅ penting!
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    }),
+  )
   async uploadAvatar(
     @CurrentUser() user: any,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
           new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif|webp)$/ }),
         ],
       }),
@@ -74,6 +80,7 @@ export class ProfileController {
   ) {
     return await this.profileService.uploadAvatar(user.id, avatar);
   }
+
 
   @Delete('avatar')
   @ApiOperation({ summary: 'Delete profile avatar' })
