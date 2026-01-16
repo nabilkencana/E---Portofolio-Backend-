@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notification/notification.service'; // Tambahkan import
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) { }
 
   async getStats(userId: string) {
     // Count total achievements
@@ -69,6 +73,18 @@ export class DashboardService {
       },
     });
 
+    // Get unread notifications count
+    const unreadNotifications = await this.prisma.notification.count({
+      where: {
+        userId,
+        status: 'UNREAD',
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+    });
+
     return {
       totalAchievements,
       validatedAchievements,
@@ -78,6 +94,7 @@ export class DashboardService {
       sertifikatCount,
       validationPercentage,
       recentAdditions,
+      unreadNotifications,
     };
   }
 
@@ -86,16 +103,13 @@ export class DashboardService {
       where: { userId },
       take: 5,
       orderBy: { createdAt: 'desc' },
-      // Tidak perlu include category karena tidak ada relasi langsung
-      // Jika ada relasi Category, sesuaikan dengan schema yang ada
     });
 
     return achievements.map(achievement => ({
       id: achievement.id,
       title: achievement.title,
-      // Gunakan type langsung dari achievement, bukan dari category
       type: achievement.type === 'sertifikat' ? 'Sertifikat' : 'Prestasi',
-      status: achievement.validationStatus, // Gunakan validationStatus
+      status: achievement.validationStatus,
       date: achievement.createdAt.toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'short',
@@ -104,9 +118,81 @@ export class DashboardService {
       year: achievement.year,
       level: this.getLevelLabel(achievement.level),
       description: achievement.description,
-      hasAttachment: !!achievement.proofFilePath, // Gunakan proofFilePath untuk cek attachment
+      hasAttachment: !!achievement.proofFilePath,
       validationStatus: achievement.validationStatus,
     }));
+  }
+
+  // Helper method untuk mendapatkan notifikasi terbaru
+  async getRecentNotifications(userId: string, limit: number = 5) {
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        userId,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        message: true,
+        type: true,
+        status: true,
+        relatedType: true,
+        link: true,
+        createdAt: true,
+        metadata: true,
+      },
+    });
+
+    return notifications.map(notification => ({
+      id: notification.id,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+      status: notification.status,
+      relatedType: notification.relatedType,
+      link: notification.link,
+      timeAgo: this.getTimeAgo(notification.createdAt),
+      isUnread: notification.status === 'UNREAD',
+      metadata: notification.metadata,
+    }));
+  }
+
+  // Helper untuk format waktu
+  private getTimeAgo(date: Date): string {
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    let interval = Math.floor(seconds / 31536000);
+    if (interval >= 1) {
+      return interval === 1 ? '1 tahun lalu' : `${interval} tahun lalu`;
+    }
+
+    interval = Math.floor(seconds / 2592000);
+    if (interval >= 1) {
+      return interval === 1 ? '1 bulan lalu' : `${interval} bulan lalu`;
+    }
+
+    interval = Math.floor(seconds / 86400);
+    if (interval >= 1) {
+      return interval === 1 ? '1 hari lalu' : `${interval} hari lalu`;
+    }
+
+    interval = Math.floor(seconds / 3600);
+    if (interval >= 1) {
+      return interval === 1 ? '1 jam lalu' : `${interval} jam lalu`;
+    }
+
+    interval = Math.floor(seconds / 60);
+    if (interval >= 1) {
+      return interval === 1 ? '1 menit lalu' : `${interval} menit lalu`;
+    }
+
+    return seconds < 10 ? 'baru saja' : `${seconds} detik lalu`;
   }
 
   // Helper method untuk mengubah level ke label
@@ -245,12 +331,20 @@ export class DashboardService {
   }
 
   async getDashboardSummary(userId: string) {
-    const [stats, recentAchievements, profileCompletion, achievementsByLevel, achievementsByYear] = await Promise.all([
+    const [
+      stats, 
+      recentAchievements, 
+      profileCompletion, 
+      achievementsByLevel, 
+      achievementsByYear,
+      recentNotifications,
+    ] = await Promise.all([
       this.getStats(userId),
       this.getRecentAchievements(userId),
       this.getProfileCompletion(userId),
       this.getAchievementsByLevel(userId),
       this.getAchievementsByYear(userId),
+      this.getRecentNotifications(userId, 3)
     ]);
 
     return {
@@ -265,6 +359,7 @@ export class DashboardService {
           : 0,
       },
       recentAchievements,
+      recentNotifications,
       profileCompletion,
       charts: {
         achievementsByLevel,

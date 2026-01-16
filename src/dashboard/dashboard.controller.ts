@@ -1,9 +1,8 @@
-// src/dashboard/dashboard.controller.ts
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DashboardService } from './dashboard.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('Dashboard')
 @Controller('dashboard')
@@ -22,6 +21,25 @@ export class DashboardController {
   @ApiOperation({ summary: 'Get recent achievements' })
   async getRecentAchievements(@CurrentUser() user: any) {
     return await this.dashboardService.getRecentAchievements(user.id);
+  }
+
+  @Get('recent-notifications')
+  @ApiOperation({ summary: 'Get recent notifications' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getRecentNotifications(
+    @CurrentUser() user: any,
+    @Query('limit') limit: number = 5,
+  ) {
+    return await this.dashboardService.getRecentNotifications(user.id, limit);
+  }
+
+  @Get('unread-notifications')
+  @ApiOperation({ summary: 'Get unread notifications count' })
+  async getUnreadNotificationsCount(@CurrentUser() user: any) {
+    const stats = await this.dashboardService.getStats(user.id);
+    return {
+      unreadCount: stats.unreadNotifications,
+    };
   }
 
   @Get('profile-completion')

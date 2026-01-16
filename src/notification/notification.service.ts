@@ -420,4 +420,48 @@ export class NotificationsService {
 
     return notifications;
   }
+
+  /**
+  * Get dashboard notifications summary
+  */
+  async getDashboardSummary(userId: string) {
+    const [unreadCount, recentNotifications] = await Promise.all([
+      this.getUnreadCount(userId),
+      this.getRecentNotifications(userId, 5),
+    ]);
+
+    // Hitung notifikasi berdasarkan type untuk badge warna berbeda
+    const byType = await this.prisma.notification.groupBy({
+      by: ['type'],
+      where: {
+        userId,
+        status: NotificationStatus.UNREAD,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const badges = {
+      achievement: byType.find(n => n.type === 'ACHIEVEMENT')?._count?.id || 0,
+      validation: byType.find(n => n.type === 'VALIDATION')?._count?.id || 0,
+      alert: byType.find(n => n.type === 'ALERT')?._count?.id || 0,
+      system: byType.find(n => n.type === 'SYSTEM')?._count?.id || 0,
+      reminder: byType.find(n => n.type === 'REMINDER')?._count?.id || 0,
+      total: unreadCount,
+    };
+
+    return {
+      unreadCount,
+      badges,
+      recentNotifications,
+      summary: `Anda memiliki ${unreadCount} notifikasi belum dibaca`,
+      hasNewAchievements: badges.achievement > 0,
+      hasPendingValidations: badges.validation > 0,
+    };
+  }
 }
